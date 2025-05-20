@@ -1,3 +1,16 @@
+## [v2.33.0](https://github.com/docling-project/docling/releases/tag/v2.33.0) - 2025-05-20
+
+### Feature
+
+* Add textbox content extraction in msword_backend ([#1538](https://github.com/docling-project/docling/issues/1538)) ([`12a0e64`](https://github.com/docling-project/docling/commit/12a0e648929ce75da73617904792a50f5145fe4a))
+
+### Fix
+
+* Fix issue with detecting docx files, and files with upper case extensions ([#1609](https://github.com/docling-project/docling/issues/1609)) ([`f4d9d41`](https://github.com/docling-project/docling/commit/f4d9d4111b0a6eb87fc1c05a56618fc430d1e7a2))
+* Load_from_doctags static usage ([#1617](https://github.com/docling-project/docling/issues/1617)) ([`0e00a26`](https://github.com/docling-project/docling/commit/0e00a263fa0c45f6cf2ae0bd94f9387c28e51ed0))
+* Incorrect force_backend_text behaviour for VLM DocTag pipelines ([#1371](https://github.com/docling-project/docling/issues/1371)) ([`f2e9c07`](https://github.com/docling-project/docling/commit/f2e9c0784c842612641171754ce51362e298088d))
+* **pypdfium:** Resolve overlapping text when merging bounding boxes ([#1549](https://github.com/docling-project/docling/issues/1549)) ([`98b5eeb`](https://github.com/docling-project/docling/commit/98b5eeb8440d34ac84f58271c8b8eea88881260a))
+
 ## [v2.32.0](https://github.com/docling-project/docling/releases/tag/v2.32.0) - 2025-05-14
 
 ### Feature
