@@ -1,3 +1,10 @@
+## [v2.36.0](https://github.com/docling-project/docling/releases/tag/v2.36.0) - 2025-06-03
+
+### Feature
+
+* Simplify dependencies, switch to uv ([#1700](https://github.com/docling-project/docling/issues/1700)) ([`cdd4018`](https://github.com/docling-project/docling/commit/cdd401847a35f16d69944eb6dddf57e4e0b65020))
+* New vlm-models support ([#1570](https://github.com/docling-project/docling/issues/1570)) ([`cfdf4ce`](https://github.com/docling-project/docling/commit/cfdf4cea25e681fc557df310b8bf34f3dd892e15))
+
 ## [v2.35.0](https://github.com/docling-project/docling/releases/tag/v2.35.0) - 2025-06-02
 
 ### Feature
