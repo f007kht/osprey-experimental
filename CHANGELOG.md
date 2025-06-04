@@ -1,3 +1,13 @@
+## [v2.36.1](https://github.com/docling-project/docling/releases/tag/v2.36.1) - 2025-06-04
+
+### Fix
+
+* Remove typer and click constraints ([#1707](https://github.com/docling-project/docling/issues/1707)) ([`8846f1a`](https://github.com/docling-project/docling/commit/8846f1a393923a6badcca3a78a664a4dd31eae0d))
+
+### Documentation
+
+* Flash-attn usage and install ([#1706](https://github.com/docling-project/docling/issues/1706)) ([`be42b03`](https://github.com/docling-project/docling/commit/be42b03f9b366bed33e95c1033b90c63f300b914))
+
 ## [v2.36.0](https://github.com/docling-project/docling/releases/tag/v2.36.0) - 2025-06-03
 
 ### Feature
