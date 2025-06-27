@@ -912,7 +912,7 @@ requires-dist = [
     { name = "accelerate", marker = "extra == 'vlm'", specifier = ">=1.2.1,<2.0.0" },
     { name = "beautifulsoup4", specifier = ">=4.12.3,<5.0.0" },
     { name = "certifi", specifier = ">=2024.7.4" },
-    { name = "docling-core", extras = ["chunking"], specifier = ">=2.29.0,<3.0.0" },
+    { name = "docling-core", extras = ["chunking"], specifier = ">=2.39.0,<3.0.0" },
     { name = "docling-ibm-models", specifier = ">=3.4.4,<4.0.0" },
     { name = "docling-parse", specifier = ">=4.0.0,<5.0.0" },
     { name = "easyocr", specifier = ">=1.7,<2.0" },
@@ -987,7 +987,7 @@ examples = [
 
 [[package]]
 name = "docling-core"
-version = "2.38.1"
+version = "2.39.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonref" },
@@ -1001,9 +1001,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/38/f7/33bb17aa13e73722bf18ecfb7f13d6fbfb384c22003209bd72708123b33f/docling_core-2.38.1.tar.gz", hash = "sha256:a0566df2316eec4d22953ca7dac839b926dd57549b4c07ac810e87dbbaf91a10", size = 146276, upload-time = "2025-06-20T12:28:48.422Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6a/8b/5613467523bed58d9f2b94220947783914b6d9910a8d20908cf148805427/docling_core-2.39.0.tar.gz", hash = "sha256:77530156c79c9000fe3104894935437d3e2d46dc0f567b5a500974d7c1a8b38b", size = 148005, upload-time = "2025-06-27T12:59:56.694Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/c5/fb2e24602db94ec02cc3ac8eb7b9665f2a5f61ff81866beb67aff95a353a/docling_core-2.38.1-py3-none-any.whl", hash = "sha256:6859313561030503e8b53aec535aa5edb765a679af76ce2e2c60722d78c6c613", size = 151570, upload-time = "2025-06-20T12:28:46.764Z" },
+    { url = "https://files.pythonhosted.org/packages/70/85/3d59ac46a47f62a0ed79e187c4163cecd2693d05006f771038db4781f9ff/docling_core-2.39.0-py3-none-any.whl", hash = "sha256:b7ce5142ab95bd8d5cfe5d7df167a96a6eb41d884f00ea42bb3dd8f40ade92ea", size = 152890, upload-time = "2025-06-27T12:59:55.327Z" },
 ]
 
 [package.optional-dependencies]
