@@ -12,6 +12,7 @@ from PIL import Image
 from docling.datamodel.accelerator_options import AcceleratorOptions
 from docling.datamodel.base_models import BoundingBox, Cluster, LayoutPrediction, Page
 from docling.datamodel.document import ConversionResult
+from docling.datamodel.pipeline_options import LayoutOptions
 from docling.datamodel.settings import settings
 from docling.models.base_model import BasePageModel
 from docling.models.utils.hf_model_download import download_hf_model
@@ -48,9 +49,14 @@ class LayoutModel(BasePageModel):
     CONTAINER_LABELS = [DocItemLabel.FORM, DocItemLabel.KEY_VALUE_REGION]
 
     def __init__(
-        self, artifacts_path: Optional[Path], accelerator_options: AcceleratorOptions
+        self,
+        artifacts_path: Optional[Path],
+        accelerator_options: AcceleratorOptions,
+        options: LayoutOptions,
     ):
         from docling_ibm_models.layoutmodel.layout_predictor import LayoutPredictor
+
+        self.options = options
 
         device = decide_device(accelerator_options.device)
 
@@ -177,7 +183,7 @@ class LayoutModel(BasePageModel):
                     # Apply postprocessing
 
                     processed_clusters, processed_cells = LayoutPostprocessor(
-                        page, clusters
+                        page, clusters, self.options
                     ).postprocess()
                     # Note: LayoutPostprocessor updates page.cells and page.parsed_page internally
 
