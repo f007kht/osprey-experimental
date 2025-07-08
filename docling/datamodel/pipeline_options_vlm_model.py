@@ -31,6 +31,12 @@ class TransformersModelType(str, Enum):
     AUTOMODEL = "automodel"
     AUTOMODEL_VISION2SEQ = "automodel-vision2seq"
     AUTOMODEL_CAUSALLM = "automodel-causallm"
+    AUTOMODEL_IMAGETEXTTOTEXT = "automodel-imagetexttotext"
+
+
+class TransformersPromptStyle(str, Enum):
+    CHAT = "chat"
+    RAW = "raw"
 
 
 class InlineVlmOptions(BaseVlmOptions):
@@ -44,6 +50,7 @@ class InlineVlmOptions(BaseVlmOptions):
 
     inference_framework: InferenceFramework
     transformers_model_type: TransformersModelType = TransformersModelType.AUTOMODEL
+    transformers_prompt_style: TransformersPromptStyle = TransformersPromptStyle.CHAT
     response_format: ResponseFormat
 
     torch_dtype: Optional[str] = None
