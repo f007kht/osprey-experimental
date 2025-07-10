@@ -335,11 +335,11 @@ WHEN VERIFY_GROUP_FOR_USER ( SESSION_USER , 'HR', 'EMP' ) = 1 THEN EMPLOYEES . D
 ```
 
 2. The other column to mask in this example is the TAX\_ID information. In this example, the rules to enforce include the following ones:
-- -Human Resources can see the unmasked TAX\_ID of the employees.
-- -Employees can see only their own unmasked TAX\_ID.
-- -Managers see a masked version of TAX\_ID with the first five characters replaced with the X character (for example, XXX-XX-1234).
-- -Any other person sees the entire TAX\_ID as masked, for example, XXX-XX-XXXX.
-- To implement this column mask, run the SQL statement that is shown in Example 3-9.
+2. -Human Resources can see the unmasked TAX\_ID of the employees.
+3. -Employees can see only their own unmasked TAX\_ID.
+4. -Managers see a masked version of TAX\_ID with the first five characters replaced with the X character (for example, XXX-XX-1234).
+5. -Any other person sees the entire TAX\_ID as masked, for example, XXX-XX-XXXX.
+6. To implement this column mask, run the SQL statement that is shown in Example 3-9.
 
 ```
 CREATE MASK HR_SCHEMA.MASK_TAX_ID_ON_EMPLOYEES ON HR_SCHEMA.EMPLOYEES AS EMPLOYEES FOR COLUMN TAX_ID RETURN CASE WHEN VERIFY_GROUP_FOR_USER ( SESSION_USER , 'HR' ) = 1 THEN EMPLOYEES . TAX_ID WHEN VERIFY_GROUP_FOR_USER ( SESSION_USER , 'MGR' ) = 1 AND SESSION_USER = EMPLOYEES . USER_ID THEN EMPLOYEES . TAX_ID WHEN VERIFY_GROUP_FOR_USER ( SESSION_USER , 'MGR' ) = 1 AND SESSION_USER <> EMPLOYEES . USER_ID THEN ( 'XXX-XX-' CONCAT QSYS2 . SUBSTR ( EMPLOYEES . TAX_ID , 8 , 4 ) ) WHEN VERIFY_GROUP_FOR_USER ( SESSION_USER , 'EMP' ) = 1 THEN EMPLOYEES . TAX_ID ELSE 'XXX-XX-XXXX' END ENABLE ;

@@ -1310,7 +1310,7 @@
       ],
       "orig": "b. Red-annotation of bounding boxes, Blue-predictions by TableFormer",
       "text": "Red-annotation of bounding boxes, Blue-predictions by TableFormer",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "b."
     },
     {
@@ -2014,7 +2014,7 @@
       ],
       "orig": "c. Structure predicted by TableFormer:",
       "text": "Structure predicted by TableFormer:",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "c."
     },
     {
@@ -10576,7 +10576,7 @@
       ],
       "orig": "[1] Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov, and Sergey Zagoruyko. End-to-",
       "text": "Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov, and Sergey Zagoruyko. End-to-",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[1]"
     },
     {
@@ -10661,7 +10661,7 @@
       ],
       "orig": "[2] Zewen Chi, Heyan Huang, Heng-Da Xu, Houjin Yu, Wanxuan Yin, and Xian-Ling Mao. Complicated table structure recognition. arXiv preprint arXiv:1908.04729 , 2019. 3",
       "text": "Zewen Chi, Heyan Huang, Heng-Da Xu, Houjin Yu, Wanxuan Yin, and Xian-Ling Mao. Complicated table structure recognition. arXiv preprint arXiv:1908.04729 , 2019. 3",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[2]"
     },
     {
@@ -10690,7 +10690,7 @@
       ],
       "orig": "[3] Bertrand Couasnon and Aurelie Lemaitre. Recognition of Tables and Forms , pages 647-677. Springer London, London, 2014. 2",
       "text": "Bertrand Couasnon and Aurelie Lemaitre. Recognition of Tables and Forms , pages 647-677. Springer London, London, 2014. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[3]"
     },
     {
@@ -10719,7 +10719,7 @@
       ],
       "orig": "[4] Herv\u00b4e D\u00b4ejean, Jean-Luc Meunier, Liangcai Gao, Yilun Huang, Yu Fang, Florian Kleber, and Eva-Maria Lang. ICDAR 2019 Competition on Table Detection and Recognition (cTDaR), Apr. 2019. http://sac.founderit.com/. 2",
       "text": "Herv\u00b4e D\u00b4ejean, Jean-Luc Meunier, Liangcai Gao, Yilun Huang, Yu Fang, Florian Kleber, and Eva-Maria Lang. ICDAR 2019 Competition on Table Detection and Recognition (cTDaR), Apr. 2019. http://sac.founderit.com/. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[4]"
     },
     {
@@ -10748,7 +10748,7 @@
       ],
       "orig": "[5] Basilios Gatos, Dimitrios Danatsas, Ioannis Pratikakis, and Stavros J Perantonis. Automatic table detection in document images. In International Conference on Pattern Recognition and Image Analysis , pages 609-618. Springer, 2005. 2",
       "text": "Basilios Gatos, Dimitrios Danatsas, Ioannis Pratikakis, and Stavros J Perantonis. Automatic table detection in document images. In International Conference on Pattern Recognition and Image Analysis , pages 609-618. Springer, 2005. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[5]"
     },
     {
@@ -10777,7 +10777,7 @@
       ],
       "orig": "[6] Max G\u00a8obel, Tamir Hassan, Ermelinda Oro, and Giorgio Orsi. Icdar 2013 table competition. In 2013 12th International Conference on Document Analysis and Recognition , pages 1449-1453, 2013. 2",
       "text": "Max G\u00a8obel, Tamir Hassan, Ermelinda Oro, and Giorgio Orsi. Icdar 2013 table competition. In 2013 12th International Conference on Document Analysis and Recognition , pages 1449-1453, 2013. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[6]"
     },
     {
@@ -10806,7 +10806,7 @@
       ],
       "orig": "[7] EA Green and M Krishnamoorthy. Recognition of tables using table grammars. procs. In Symposium on Document Analysis and Recognition (SDAIR'95) , pages 261-277. 2",
       "text": "EA Green and M Krishnamoorthy. Recognition of tables using table grammars. procs. In Symposium on Document Analysis and Recognition (SDAIR'95) , pages 261-277. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[7]"
     },
     {
@@ -10835,7 +10835,7 @@
       ],
       "orig": "[8] Khurram Azeem Hashmi, Alain Pagani, Marcus Liwicki, Didier Stricker, and Muhammad Zeshan Afzal. Castabdetectors: Cascade network for table detection in document images with recursive feature pyramid and switchable atrous convolution. Journal of Imaging , 7(10), 2021. 1",
       "text": "Khurram Azeem Hashmi, Alain Pagani, Marcus Liwicki, Didier Stricker, and Muhammad Zeshan Afzal. Castabdetectors: Cascade network for table detection in document images with recursive feature pyramid and switchable atrous convolution. Journal of Imaging , 7(10), 2021. 1",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[8]"
     },
     {
@@ -10864,7 +10864,7 @@
       ],
       "orig": "[9] Kaiming He, Georgia Gkioxari, Piotr Dollar, and Ross Girshick. Mask r-cnn. In Proceedings of the IEEE International Conference on Computer Vision (ICCV) , Oct 2017. 1",
       "text": "Kaiming He, Georgia Gkioxari, Piotr Dollar, and Ross Girshick. Mask r-cnn. In Proceedings of the IEEE International Conference on Computer Vision (ICCV) , Oct 2017. 1",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[9]"
     },
     {
@@ -10893,7 +10893,7 @@
       ],
       "orig": "[10] Yelin He, X. Qi, Jiaquan Ye, Peng Gao, Yihao Chen, Bingcong Li, Xin Tang, and Rong Xiao. Pingan-vcgroup's solution for icdar 2021 competition on scientific table image recognition to latex. ArXiv , abs/2105.01846, 2021. 2",
       "text": "Yelin He, X. Qi, Jiaquan Ye, Peng Gao, Yihao Chen, Bingcong Li, Xin Tang, and Rong Xiao. Pingan-vcgroup's solution for icdar 2021 competition on scientific table image recognition to latex. ArXiv , abs/2105.01846, 2021. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[10]"
     },
     {
@@ -10922,7 +10922,7 @@
       ],
       "orig": "[11] Jianying Hu, Ramanujan S Kashi, Daniel P Lopresti, and Gordon Wilfong. Medium-independent table detection. In Document Recognition and Retrieval VII , volume 3967, pages 291-302. International Society for Optics and Photonics, 1999. 2",
       "text": "Jianying Hu, Ramanujan S Kashi, Daniel P Lopresti, and Gordon Wilfong. Medium-independent table detection. In Document Recognition and Retrieval VII , volume 3967, pages 291-302. International Society for Optics and Photonics, 1999. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[11]"
     },
     {
@@ -10951,7 +10951,7 @@
       ],
       "orig": "[12] Matthew Hurst. A constraint-based approach to table structure derivation. In Proceedings of the Seventh International Conference on Document Analysis and Recognition - Volume 2 , ICDAR '03, page 911, USA, 2003. IEEE Computer Society. 2",
       "text": "Matthew Hurst. A constraint-based approach to table structure derivation. In Proceedings of the Seventh International Conference on Document Analysis and Recognition - Volume 2 , ICDAR '03, page 911, USA, 2003. IEEE Computer Society. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[12]"
     },
     {
@@ -10980,7 +10980,7 @@
       ],
       "orig": "[13] Thotreingam Kasar, Philippine Barlas, Sebastien Adam, Cl\u00b4ement Chatelain, and Thierry Paquet. Learning to detect tables in scanned document images using line information. In 2013 12th International Conference on Document Analysis and Recognition , pages 1185-1189. IEEE, 2013. 2",
       "text": "Thotreingam Kasar, Philippine Barlas, Sebastien Adam, Cl\u00b4ement Chatelain, and Thierry Paquet. Learning to detect tables in scanned document images using line information. In 2013 12th International Conference on Document Analysis and Recognition , pages 1185-1189. IEEE, 2013. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[13]"
     },
     {
@@ -11009,7 +11009,7 @@
       ],
       "orig": "[14] Pratik Kayal, Mrinal Anand, Harsh Desai, and Mayank Singh. Icdar 2021 competition on scientific table image recognition to latex, 2021. 2",
       "text": "Pratik Kayal, Mrinal Anand, Harsh Desai, and Mayank Singh. Icdar 2021 competition on scientific table image recognition to latex, 2021. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[14]"
     },
     {
@@ -11038,7 +11038,7 @@
       ],
       "orig": "[15] Harold W Kuhn. The hungarian method for the assignment problem. Naval research logistics quarterly , 2(1-2):83-97, 1955. 6",
       "text": "Harold W Kuhn. The hungarian method for the assignment problem. Naval research logistics quarterly , 2(1-2):83-97, 1955. 6",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[15]"
     },
     {
@@ -11067,7 +11067,7 @@
       ],
       "orig": "[16] Girish Kulkarni, Visruth Premraj, Vicente Ordonez, Sagnik Dhar, Siming Li, Yejin Choi, Alexander C. Berg, and Tamara L. Berg. Babytalk: Understanding and generating simple image descriptions. IEEE Transactions on Pattern Analysis and Machine Intelligence , 35(12):2891-2903, 2013. 4",
       "text": "Girish Kulkarni, Visruth Premraj, Vicente Ordonez, Sagnik Dhar, Siming Li, Yejin Choi, Alexander C. Berg, and Tamara L. Berg. Babytalk: Understanding and generating simple image descriptions. IEEE Transactions on Pattern Analysis and Machine Intelligence , 35(12):2891-2903, 2013. 4",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[16]"
     },
     {
@@ -11096,7 +11096,7 @@
       ],
       "orig": "[17] Minghao Li, Lei Cui, Shaohan Huang, Furu Wei, Ming Zhou, and Zhoujun Li. Tablebank: A benchmark dataset for table detection and recognition, 2019. 2, 3",
       "text": "Minghao Li, Lei Cui, Shaohan Huang, Furu Wei, Ming Zhou, and Zhoujun Li. Tablebank: A benchmark dataset for table detection and recognition, 2019. 2, 3",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[17]"
     },
     {
@@ -11125,7 +11125,7 @@
       ],
       "orig": "[18] Yiren Li, Zheng Huang, Junchi Yan, Yi Zhou, Fan Ye, and Xianhui Liu. Gfte: Graph-based financial table extraction. In Alberto Del Bimbo, Rita Cucchiara, Stan Sclaroff, Giovanni Maria Farinella, Tao Mei, Marco Bertini, Hugo Jair Escalante, and Roberto Vezzani, editors, Pattern Recognition. ICPR International Workshops and Challenges , pages 644-658, Cham, 2021. Springer International Publishing. 2, 3",
       "text": "Yiren Li, Zheng Huang, Junchi Yan, Yi Zhou, Fan Ye, and Xianhui Liu. Gfte: Graph-based financial table extraction. In Alberto Del Bimbo, Rita Cucchiara, Stan Sclaroff, Giovanni Maria Farinella, Tao Mei, Marco Bertini, Hugo Jair Escalante, and Roberto Vezzani, editors, Pattern Recognition. ICPR International Workshops and Challenges , pages 644-658, Cham, 2021. Springer International Publishing. 2, 3",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[18]"
     },
     {
@@ -11154,7 +11154,7 @@
       ],
       "orig": "[19] Nikolaos Livathinos, Cesar Berrospi, Maksym Lysak, Viktor Kuropiatnyk, Ahmed Nassar, Andre Carvalho, Michele Dolfi, Christoph Auer, Kasper Dinkla, and Peter Staar. Robust pdf document conversion using recurrent neural networks. Proceedings of the AAAI Conference on Artificial Intelligence , 35(17):15137-15145, May 2021. 1",
       "text": "Nikolaos Livathinos, Cesar Berrospi, Maksym Lysak, Viktor Kuropiatnyk, Ahmed Nassar, Andre Carvalho, Michele Dolfi, Christoph Auer, Kasper Dinkla, and Peter Staar. Robust pdf document conversion using recurrent neural networks. Proceedings of the AAAI Conference on Artificial Intelligence , 35(17):15137-15145, May 2021. 1",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[19]"
     },
     {
@@ -11183,7 +11183,7 @@
       ],
       "orig": "[20] Rujiao Long, Wen Wang, Nan Xue, Feiyu Gao, Zhibo Yang, Yongpan Wang, and Gui-Song Xia. Parsing table structures in the wild. In Proceedings of the IEEE/CVF International Conference on Computer Vision , pages 944-952, 2021. 2",
       "text": "Rujiao Long, Wen Wang, Nan Xue, Feiyu Gao, Zhibo Yang, Yongpan Wang, and Gui-Song Xia. Parsing table structures in the wild. In Proceedings of the IEEE/CVF International Conference on Computer Vision , pages 944-952, 2021. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[20]"
     },
     {
@@ -11212,7 +11212,7 @@
       ],
       "orig": "[21] Shubham Singh Paliwal, D Vishwanath, Rohit Rahul, Monika Sharma, and Lovekesh Vig. Tablenet: Deep learning model for end-to-end table detection and tabular data extraction from scanned document images. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 128-133. IEEE, 2019. 1",
       "text": "Shubham Singh Paliwal, D Vishwanath, Rohit Rahul, Monika Sharma, and Lovekesh Vig. Tablenet: Deep learning model for end-to-end table detection and tabular data extraction from scanned document images. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 128-133. IEEE, 2019. 1",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[21]"
     },
     {
@@ -11241,7 +11241,7 @@
       ],
       "orig": "[22] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, Alban Desmaison, Andreas Kopf, Edward Yang, Zachary DeVito, Martin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit Steiner, Lu Fang, Junjie Bai, and Soumith Chintala. Pytorch: An imperative style, high-performance deep learning library. In H. Wallach, H. Larochelle, A. Beygelzimer, F. d'Alch\u00b4e-Buc, E. Fox, and R. Garnett, editors, Advances in Neural Information Processing Systems 32 , pages 8024-8035. Curran Associates, Inc., 2019. 6",
       "text": "Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, Alban Desmaison, Andreas Kopf, Edward Yang, Zachary DeVito, Martin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit Steiner, Lu Fang, Junjie Bai, and Soumith Chintala. Pytorch: An imperative style, high-performance deep learning library. In H. Wallach, H. Larochelle, A. Beygelzimer, F. d'Alch\u00b4e-Buc, E. Fox, and R. Garnett, editors, Advances in Neural Information Processing Systems 32 , pages 8024-8035. Curran Associates, Inc., 2019. 6",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[22]"
     },
     {
@@ -11270,7 +11270,7 @@
       ],
       "orig": "[23] Devashish Prasad, Ayan Gadpal, Kshitij Kapadni, Manish Visave, and Kavita Sultanpure. Cascadetabnet: An approach for end to end table detection and structure recognition from image-based documents. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops , pages 572-573, 2020. 1",
       "text": "Devashish Prasad, Ayan Gadpal, Kshitij Kapadni, Manish Visave, and Kavita Sultanpure. Cascadetabnet: An approach for end to end table detection and structure recognition from image-based documents. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops , pages 572-573, 2020. 1",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[23]"
     },
     {
@@ -11299,7 +11299,7 @@
       ],
       "orig": "[24] Shah Rukh Qasim, Hassan Mahmood, and Faisal Shafait. Rethinking table recognition using graph neural networks. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 142-147. IEEE, 2019. 3",
       "text": "Shah Rukh Qasim, Hassan Mahmood, and Faisal Shafait. Rethinking table recognition using graph neural networks. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 142-147. IEEE, 2019. 3",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[24]"
     },
     {
@@ -11328,7 +11328,7 @@
       ],
       "orig": "[25] Hamid Rezatofighi, Nathan Tsoi, JunYoung Gwak, Amir Sadeghian, Ian Reid, and Silvio Savarese. Generalized intersection over union: A metric and a loss for bounding box regression. In Proceedings of the IEEE/CVF Conference on",
       "text": "Hamid Rezatofighi, Nathan Tsoi, JunYoung Gwak, Amir Sadeghian, Ian Reid, and Silvio Savarese. Generalized intersection over union: A metric and a loss for bounding box regression. In Proceedings of the IEEE/CVF Conference on",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[25]"
     },
     {
@@ -11411,7 +11411,7 @@
       ],
       "orig": "[26] Sebastian Schreiber, Stefan Agne, Ivo Wolf, Andreas Dengel, and Sheraz Ahmed. Deepdesrt: Deep learning for detection and structure recognition of tables in document images. In 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR) , volume 01, pages 11621167, 2017. 1",
       "text": "Sebastian Schreiber, Stefan Agne, Ivo Wolf, Andreas Dengel, and Sheraz Ahmed. Deepdesrt: Deep learning for detection and structure recognition of tables in document images. In 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR) , volume 01, pages 11621167, 2017. 1",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[26]"
     },
     {
@@ -11440,7 +11440,7 @@
       ],
       "orig": "[27] Sebastian Schreiber, Stefan Agne, Ivo Wolf, Andreas Dengel, and Sheraz Ahmed. Deepdesrt: Deep learning for detection and structure recognition of tables in document images. In 2017 14th IAPR international conference on document analysis and recognition (ICDAR) , volume 1, pages 1162-1167. IEEE, 2017. 3",
       "text": "Sebastian Schreiber, Stefan Agne, Ivo Wolf, Andreas Dengel, and Sheraz Ahmed. Deepdesrt: Deep learning for detection and structure recognition of tables in document images. In 2017 14th IAPR international conference on document analysis and recognition (ICDAR) , volume 1, pages 1162-1167. IEEE, 2017. 3",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[27]"
     },
     {
@@ -11469,7 +11469,7 @@
       ],
       "orig": "[28] Faisal Shafait and Ray Smith. Table detection in heterogeneous documents. In Proceedings of the 9th IAPR International Workshop on Document Analysis Systems , pages 6572, 2010. 2",
       "text": "Faisal Shafait and Ray Smith. Table detection in heterogeneous documents. In Proceedings of the 9th IAPR International Workshop on Document Analysis Systems , pages 6572, 2010. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[28]"
     },
     {
@@ -11498,7 +11498,7 @@
       ],
       "orig": "[29] Shoaib Ahmed Siddiqui, Imran Ali Fateh, Syed Tahseen Raza Rizvi, Andreas Dengel, and Sheraz Ahmed. Deeptabstr: Deep learning based table structure recognition. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 1403-1409. IEEE, 2019. 3",
       "text": "Shoaib Ahmed Siddiqui, Imran Ali Fateh, Syed Tahseen Raza Rizvi, Andreas Dengel, and Sheraz Ahmed. Deeptabstr: Deep learning based table structure recognition. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 1403-1409. IEEE, 2019. 3",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[29]"
     },
     {
@@ -11527,7 +11527,7 @@
       ],
       "orig": "[30] Peter W J Staar, Michele Dolfi, Christoph Auer, and Costas Bekas. Corpus conversion service: A machine learning platform to ingest documents at scale. In Proceedings of the 24th ACM SIGKDD , KDD '18, pages 774-782, New York, NY, USA, 2018. ACM. 1",
       "text": "Peter W J Staar, Michele Dolfi, Christoph Auer, and Costas Bekas. Corpus conversion service: A machine learning platform to ingest documents at scale. In Proceedings of the 24th ACM SIGKDD , KDD '18, pages 774-782, New York, NY, USA, 2018. ACM. 1",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[30]"
     },
     {
@@ -11556,7 +11556,7 @@
       ],
       "orig": "[31] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, \u0141 ukasz Kaiser, and Illia Polosukhin. Attention is all you need. In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems 30 , pages 5998-6008. Curran Associates, Inc., 2017. 5",
       "text": "Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, \u0141 ukasz Kaiser, and Illia Polosukhin. Attention is all you need. In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems 30 , pages 5998-6008. Curran Associates, Inc., 2017. 5",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[31]"
     },
     {
@@ -11585,7 +11585,7 @@
       ],
       "orig": "[32] Oriol Vinyals, Alexander Toshev, Samy Bengio, and Dumitru Erhan. Show and tell: A neural image caption generator. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , June 2015. 2",
       "text": "Oriol Vinyals, Alexander Toshev, Samy Bengio, and Dumitru Erhan. Show and tell: A neural image caption generator. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , June 2015. 2",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[32]"
     },
     {
@@ -11614,7 +11614,7 @@
       ],
       "orig": "[33] Wenyuan Xue, Qingyong Li, and Dacheng Tao. Res2tim: reconstruct syntactic structures from table images. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 749-755. IEEE, 2019. 3",
       "text": "Wenyuan Xue, Qingyong Li, and Dacheng Tao. Res2tim: reconstruct syntactic structures from table images. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 749-755. IEEE, 2019. 3",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[33]"
     },
     {
@@ -11643,7 +11643,7 @@
       ],
       "orig": "[34] Wenyuan Xue, Baosheng Yu, Wen Wang, Dacheng Tao, and Qingyong Li. Tgrnet: A table graph reconstruction network for table structure recognition. arXiv preprint arXiv:2106.10598 , 2021. 3",
       "text": "Wenyuan Xue, Baosheng Yu, Wen Wang, Dacheng Tao, and Qingyong Li. Tgrnet: A table graph reconstruction network for table structure recognition. arXiv preprint arXiv:2106.10598 , 2021. 3",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[34]"
     },
     {
@@ -11672,7 +11672,7 @@
       ],
       "orig": "[35] Quanzeng You, Hailin Jin, Zhaowen Wang, Chen Fang, and Jiebo Luo. Image captioning with semantic attention. In Proceedings of the IEEE conference on computer vision and pattern recognition , pages 4651-4659, 2016. 4",
       "text": "Quanzeng You, Hailin Jin, Zhaowen Wang, Chen Fang, and Jiebo Luo. Image captioning with semantic attention. In Proceedings of the IEEE conference on computer vision and pattern recognition , pages 4651-4659, 2016. 4",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[35]"
     },
     {
@@ -11701,7 +11701,7 @@
       ],
       "orig": "[36] Xinyi Zheng, Doug Burdick, Lucian Popa, Peter Zhong, and Nancy Xin Ru Wang. Global table extractor (gte): A framework for joint table identification and cell structure recognition using visual context. Winter Conference for Applications in Computer Vision (WACV) , 2021. 2, 3",
       "text": "Xinyi Zheng, Doug Burdick, Lucian Popa, Peter Zhong, and Nancy Xin Ru Wang. Global table extractor (gte): A framework for joint table identification and cell structure recognition using visual context. Winter Conference for Applications in Computer Vision (WACV) , 2021. 2, 3",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[36]"
     },
     {
@@ -11730,7 +11730,7 @@
       ],
       "orig": "[37] Xu Zhong, Elaheh ShafieiBavani, and Antonio Jimeno Yepes. Image-based table recognition: Data, model,",
       "text": "Xu Zhong, Elaheh ShafieiBavani, and Antonio Jimeno Yepes. Image-based table recognition: Data, model,",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[37]"
     },
     {
@@ -11788,7 +11788,7 @@
       ],
       "orig": "[38] Xu Zhong, Jianbin Tang, and Antonio Jimeno Yepes. Publaynet: Largest dataset ever for document layout analysis. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 1015-1022, 2019. 1",
       "text": "Xu Zhong, Jianbin Tang, and Antonio Jimeno Yepes. Publaynet: Largest dataset ever for document layout analysis. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 1015-1022, 2019. 1",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "[38]"
     },
     {
@@ -12105,7 +12105,7 @@
       ],
       "orig": "1. Prepare styling and content templates: The styling templates have been manually designed and organized into groups of scope specific appearances (e.g. financial data, marketing data, etc.) Additionally, we have prepared curated collections of content templates by extracting the most frequently used terms out of non-synthetic datasets (e.g. PubTabNet, FinTabNet, etc.).",
       "text": "Prepare styling and content templates: The styling templates have been manually designed and organized into groups of scope specific appearances (e.g. financial data, marketing data, etc.) Additionally, we have prepared curated collections of content templates by extracting the most frequently used terms out of non-synthetic datasets (e.g. PubTabNet, FinTabNet, etc.).",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "1."
     },
     {
@@ -12134,7 +12134,7 @@
       ],
       "orig": "2. Generate table structures: The structure of each synthetic dataset assumes a horizontal table header which potentially spans over multiple rows and a table body that may contain a combination of row spans and column spans. However, spans are not allowed to cross the header - body boundary. The table structure is described by the parameters: Total number of table rows and columns, number of header rows, type of spans (header only spans, row only spans, column only spans, both row and column spans), maximum span size and the ratio of the table area covered by spans.",
       "text": "Generate table structures: The structure of each synthetic dataset assumes a horizontal table header which potentially spans over multiple rows and a table body that may contain a combination of row spans and column spans. However, spans are not allowed to cross the header - body boundary. The table structure is described by the parameters: Total number of table rows and columns, number of header rows, type of spans (header only spans, row only spans, column only spans, both row and column spans), maximum span size and the ratio of the table area covered by spans.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "2."
     },
     {
@@ -12163,7 +12163,7 @@
       ],
       "orig": "3. Generate content: Based on the dataset theme , a set of suitable content templates is chosen first. Then, this content can be combined with purely random text to produce the synthetic content.",
       "text": "Generate content: Based on the dataset theme , a set of suitable content templates is chosen first. Then, this content can be combined with purely random text to produce the synthetic content.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "3."
     },
     {
@@ -12192,7 +12192,7 @@
       ],
       "orig": "4. Apply styling templates: Depending on the domain of the synthetic dataset, a set of styling templates is first manually selected. Then, a style is randomly selected to format the appearance of the synthesized table.",
       "text": "Apply styling templates: Depending on the domain of the synthetic dataset, a set of styling templates is first manually selected. Then, a style is randomly selected to format the appearance of the synthesized table.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "4."
     },
     {
@@ -12221,7 +12221,7 @@
       ],
       "orig": "5. Render the complete tables: The synthetic table is finally rendered by a web browser engine to generate the bounding boxes for each table cell. A batching technique is utilized to optimize the runtime overhead of the rendering process.",
       "text": "Render the complete tables: The synthetic table is finally rendered by a web browser engine to generate the bounding boxes for each table cell. A batching technique is utilized to optimize the runtime overhead of the rendering process.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "5."
     },
     {
@@ -14091,7 +14091,7 @@
       ],
       "orig": "1. Get the minimal grid dimensions - number of rows and columns for the predicted table structure. This represents the most granular grid for the underlying table structure.",
       "text": "Get the minimal grid dimensions - number of rows and columns for the predicted table structure. This represents the most granular grid for the underlying table structure.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "1."
     },
     {
@@ -14120,7 +14120,7 @@
       ],
       "orig": "2. Generate pair-wise matches between the bounding boxes of the PDF cells and the predicted cells. The Intersection Over Union (IOU) metric is used to evaluate the quality of the matches.",
       "text": "Generate pair-wise matches between the bounding boxes of the PDF cells and the predicted cells. The Intersection Over Union (IOU) metric is used to evaluate the quality of the matches.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "2."
     },
     {
@@ -14149,7 +14149,7 @@
       ],
       "orig": "3. Use a carefully selected IOU threshold to designate the matches as \"good\" ones and \"bad\" ones.",
       "text": "Use a carefully selected IOU threshold to designate the matches as \"good\" ones and \"bad\" ones.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "3."
     },
     {
@@ -14207,7 +14207,7 @@
       ],
       "orig": "4. Find the best-fitting content alignment for the predicted cells with good IOU per each column. The alignment of the column can be identified by the following formula:",
       "text": "Find the best-fitting content alignment for the predicted cells with good IOU per each column. The alignment of the column can be identified by the following formula:",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "4."
     },
     {
@@ -14290,7 +14290,7 @@
       ],
       "orig": "5. Use the alignment computed in step 4, to compute the median x -coordinate for all table columns and the me-",
       "text": "Use the alignment computed in step 4, to compute the median x -coordinate for all table columns and the me-",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "5."
     },
     {
@@ -14319,7 +14319,7 @@
       ],
       "orig": "6. Snap all cells with bad IOU to their corresponding median x -coordinates and cell sizes.",
       "text": "Snap all cells with bad IOU to their corresponding median x -coordinates and cell sizes.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "6."
     },
     {
@@ -14348,7 +14348,7 @@
       ],
       "orig": "7. Generate a new set of pair-wise matches between the corrected bounding boxes and PDF cells. This time use a modified version of the IOU metric, where the area of the intersection between the predicted and PDF cells is divided by the PDF cell area. In case there are multiple matches for the same PDF cell, the prediction with the higher score is preferred. This covers the cases where the PDF cells are smaller than the area of predicted or corrected prediction cells.",
       "text": "Generate a new set of pair-wise matches between the corrected bounding boxes and PDF cells. This time use a modified version of the IOU metric, where the area of the intersection between the predicted and PDF cells is divided by the PDF cell area. In case there are multiple matches for the same PDF cell, the prediction with the higher score is preferred. This covers the cases where the PDF cells are smaller than the area of predicted or corrected prediction cells.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "7."
     },
     {
@@ -14377,7 +14377,7 @@
       ],
       "orig": "8. In some rare occasions, we have noticed that TableFormer can confuse a single column as two. When the postprocessing steps are applied, this results with two predicted columns pointing to the same PDF column. In such case we must de-duplicate the columns according to highest total column intersection score.",
       "text": "In some rare occasions, we have noticed that TableFormer can confuse a single column as two. When the postprocessing steps are applied, this results with two predicted columns pointing to the same PDF column. In such case we must de-duplicate the columns according to highest total column intersection score.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "8."
     },
     {
@@ -14406,7 +14406,7 @@
       ],
       "orig": "9. Pick up the remaining orphan cells. There could be cases, when after applying all the previous post-processing steps, some PDF cells could still remain without any match to predicted cells. However, it is still possible to deduce the correct matching for an orphan PDF cell by mapping its bounding box on the geometry of the grid. This mapping decides if the content of the orphan cell will be appended to an already matched table cell, or a new table cell should be created to match with the orphan.",
       "text": "Pick up the remaining orphan cells. There could be cases, when after applying all the previous post-processing steps, some PDF cells could still remain without any match to predicted cells. However, it is still possible to deduce the correct matching for an orphan PDF cell by mapping its bounding box on the geometry of the grid. This mapping decides if the content of the orphan cell will be appended to an already matched table cell, or a new table cell should be created to match with the orphan.",
-      "enumerated": false,
+      "enumerated": true,
       "marker": "9."
     },
     {

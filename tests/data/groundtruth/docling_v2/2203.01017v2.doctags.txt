@@ -9,9 +9,9 @@
 <text><loc_41><loc_354><loc_234><loc_450>The occurrence of tables in documents is ubiquitous. They often summarise quantitative or factual data, which is cumbersome to describe in verbose text but nevertheless extremely valuable. Unfortunately, this compact representation is often not easy to parse by machines. There are many implicit conventions used to obtain a compact table representation. For example, tables often have complex columnand row-headers in order to reduce duplicated cell content. Lines of different shapes and sizes are leveraged to separate content or indicate a tree structure. Additionally, tables can also have empty/missing table-entries or multi-row textual table-entries. Fig. 1 shows a table which presents all these issues.</text>
 <picture><loc_258><loc_144><loc_439><loc_191></picture>
 <otsl><loc_258><loc_144><loc_439><loc_191><ched>1<nl></otsl>
-<unordered_list><list_item><loc_258><loc_198><loc_397><loc_210>Red-annotation of bounding boxes, Blue-predictions by TableFormer</list_item>
+<ordered_list><list_item><loc_258><loc_198><loc_397><loc_210>Red-annotation of bounding boxes, Blue-predictions by TableFormer</list_item>
 <list_item><loc_258><loc_265><loc_401><loc_271>Structure predicted by TableFormer:</list_item>
-</unordered_list>
+</ordered_list>
 <picture><loc_257><loc_213><loc_441><loc_259></picture>
 <picture><loc_258><loc_274><loc_439><loc_313><caption><loc_252><loc_325><loc_445><loc_353>Figure 1: Picture of a table with subtle, complex features such as (1) multi-column headers, (2) cell with multi-row text and (3) cells with no content. Image from PubTabNet evaluation set, filename: 'PMC2944238 004 02'.</caption></picture>
 <otsl><loc_258><loc_274><loc_439><loc_313><fcel>0<fcel>1 2 1<lcel><lcel><lcel><nl><fcel>3<fcel>4 3<fcel>5<fcel>6<fcel>7<nl><fcel>8 2<fcel>9<fcel>10<fcel>11<fcel>12<nl><fcel>13<ecel><fcel>14<fcel>15<fcel>16<nl><fcel>17<fcel>18<ecel><fcel>19<fcel>20<nl></otsl>
@@ -124,8 +124,8 @@
 <text><loc_41><loc_339><loc_234><loc_450>We showcase several visualizations for the different components of our network on various "complex" tables within datasets presented in this work in Fig. 5 and Fig. 6 As it is shown, our model is able to predict bounding boxes for all table cells, even for the empty ones. Additionally, our post-processing techniques can extract the cell content by matching the predicted bounding boxes to the PDF cells based on their overlap and spatial proximity. The left part of Fig. 5 demonstrates also the adaptability of our method to any language, as it can successfully extract Japanese text, although the training set contains only English content. We provide more visualizations including the intermediate steps in the supplementary material. Overall these illustrations justify the versatility of our method across a diverse range of table appearances and content type.</text>
 <text><loc_252><loc_324><loc_445><loc_412>In this paper, we presented TableFormer an end-to-end transformer based approach to predict table structures and bounding boxes of cells from an image. This approach enables us to recreate the table structure, and extract the cell content from PDF or OCR by using bounding boxes. Additionally, it provides the versatility required in real-world scenarios when dealing with various types of PDF documents, and languages. Furthermore, our method outperforms all state-of-the-arts with a wide margin. Finally, we introduce "SynthTabNet" a challenging synthetically generated dataset that reinforces missing characteristics from other datasets.</text>
 <section_header_level_1><loc_252><loc_424><loc_298><loc_431>References</section_header_level_1>
-<unordered_list><list_item><loc_256><loc_438><loc_445><loc_450>Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov, and Sergey Zagoruyko. End-to-</list_item>
-</unordered_list>
+<ordered_list><list_item><loc_256><loc_438><loc_445><loc_450>Nicolas Carion, Francisco Massa, Gabriel Synnaeve, Nicolas Usunier, Alexander Kirillov, and Sergey Zagoruyko. End-to-</list_item>
+</ordered_list>
 <page_footer><loc_241><loc_463><loc_245><loc_469>8</page_footer>
 <page_break>
 <unordered_list><list_item><loc_57><loc_48><loc_234><loc_74>end object detection with transformers. In Andrea Vedaldi, Horst Bischof, Thomas Brox, and Jan-Michael Frahm, editors, Computer Vision - ECCV 2020 , pages 213-229, Cham, 2020. Springer International Publishing. 5</list_item>
@@ -157,7 +157,7 @@
 <page_footer><loc_241><loc_463><loc_245><loc_469>9</page_footer>
 <page_break>
 <text><loc_57><loc_48><loc_234><loc_60>Computer Vision and Pattern Recognition , pages 658-666, 2019. 6</text>
-<unordered_list><list_item><loc_41><loc_62><loc_234><loc_102>Sebastian Schreiber, Stefan Agne, Ivo Wolf, Andreas Dengel, and Sheraz Ahmed. Deepdesrt: Deep learning for detection and structure recognition of tables in document images. In 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR) , volume 01, pages 11621167, 2017. 1</list_item>
+<ordered_list><list_item><loc_41><loc_62><loc_234><loc_102>Sebastian Schreiber, Stefan Agne, Ivo Wolf, Andreas Dengel, and Sheraz Ahmed. Deepdesrt: Deep learning for detection and structure recognition of tables in document images. In 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR) , volume 01, pages 11621167, 2017. 1</list_item>
 <list_item><loc_41><loc_104><loc_234><loc_143>Sebastian Schreiber, Stefan Agne, Ivo Wolf, Andreas Dengel, and Sheraz Ahmed. Deepdesrt: Deep learning for detection and structure recognition of tables in document images. In 2017 14th IAPR international conference on document analysis and recognition (ICDAR) , volume 1, pages 1162-1167. IEEE, 2017. 3</list_item>
 <list_item><loc_41><loc_145><loc_234><loc_171>Faisal Shafait and Ray Smith. Table detection in heterogeneous documents. In Proceedings of the 9th IAPR International Workshop on Document Analysis Systems , pages 6572, 2010. 2</list_item>
 <list_item><loc_41><loc_173><loc_234><loc_206>Shoaib Ahmed Siddiqui, Imran Ali Fateh, Syed Tahseen Raza Rizvi, Andreas Dengel, and Sheraz Ahmed. Deeptabstr: Deep learning based table structure recognition. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 1403-1409. IEEE, 2019. 3</list_item>
@@ -171,7 +171,7 @@
 <list_item><loc_41><loc_438><loc_234><loc_450>Xu Zhong, Elaheh ShafieiBavani, and Antonio Jimeno Yepes. Image-based table recognition: Data, model,</list_item>
 <list_item><loc_269><loc_48><loc_445><loc_74>and evaluation. In Andrea Vedaldi, Horst Bischof, Thomas Brox, and Jan-Michael Frahm, editors, Computer Vision ECCV 2020 , pages 564-580, Cham, 2020. Springer International Publishing. 2, 3, 7</list_item>
 <list_item><loc_252><loc_76><loc_445><loc_102>Xu Zhong, Jianbin Tang, and Antonio Jimeno Yepes. Publaynet: Largest dataset ever for document layout analysis. In 2019 International Conference on Document Analysis and Recognition (ICDAR) , pages 1015-1022, 2019. 1</list_item>
-</unordered_list>
+</ordered_list>
 <page_footer><loc_239><loc_463><loc_247><loc_469>10</page_footer>
 <page_break>
 <section_header_level_1><loc_109><loc_70><loc_380><loc_86>TableFormer: Table Structure Understanding with Transformers Supplementary Material</section_header_level_1>
@@ -183,12 +183,12 @@
 <section_header_level_1><loc_41><loc_418><loc_125><loc_424>1.2. Synthetic datasets</section_header_level_1>
 <text><loc_41><loc_430><loc_234><loc_451><loc_252><loc_103><loc_445><loc_131>Aiming to train and evaluate our models in a broader spectrum of table data we have synthesized four types of datasets. Each one contains tables with different appear- ances in regard to their size, structure, style and content. Every synthetic dataset contains 150k examples, summing up to 600k synthetic examples. All datasets are divided into Train, Test and Val splits (80%, 10%, 10%).</text>
 <text><loc_252><loc_133><loc_445><loc_147>The process of generating a synthetic dataset can be decomposed into the following steps:</text>
-<unordered_list><list_item><loc_252><loc_149><loc_445><loc_200>Prepare styling and content templates: The styling templates have been manually designed and organized into groups of scope specific appearances (e.g. financial data, marketing data, etc.) Additionally, we have prepared curated collections of content templates by extracting the most frequently used terms out of non-synthetic datasets (e.g. PubTabNet, FinTabNet, etc.).</list_item>
+<ordered_list><list_item><loc_252><loc_149><loc_445><loc_200>Prepare styling and content templates: The styling templates have been manually designed and organized into groups of scope specific appearances (e.g. financial data, marketing data, etc.) Additionally, we have prepared curated collections of content templates by extracting the most frequently used terms out of non-synthetic datasets (e.g. PubTabNet, FinTabNet, etc.).</list_item>
 <list_item><loc_252><loc_202><loc_445><loc_283>Generate table structures: The structure of each synthetic dataset assumes a horizontal table header which potentially spans over multiple rows and a table body that may contain a combination of row spans and column spans. However, spans are not allowed to cross the header - body boundary. The table structure is described by the parameters: Total number of table rows and columns, number of header rows, type of spans (header only spans, row only spans, column only spans, both row and column spans), maximum span size and the ratio of the table area covered by spans.</list_item>
 <list_item><loc_252><loc_286><loc_445><loc_314>Generate content: Based on the dataset theme , a set of suitable content templates is chosen first. Then, this content can be combined with purely random text to produce the synthetic content.</list_item>
 <list_item><loc_252><loc_316><loc_445><loc_345>Apply styling templates: Depending on the domain of the synthetic dataset, a set of styling templates is first manually selected. Then, a style is randomly selected to format the appearance of the synthesized table.</list_item>
 <list_item><loc_252><loc_347><loc_445><loc_383>Render the complete tables: The synthetic table is finally rendered by a web browser engine to generate the bounding boxes for each table cell. A batching technique is utilized to optimize the runtime overhead of the rendering process.</list_item>
-</unordered_list>
+</ordered_list>
 <section_header_level_1><loc_252><loc_393><loc_445><loc_408>2. Prediction post-processing for PDF documents</section_header_level_1>
 <text><loc_252><loc_415><loc_445><loc_451>Although TableFormer can predict the table structure and the bounding boxes for tables recognized inside PDF documents, this is not enough when a full reconstruction of the original table is required. This happens mainly due the following reasons:</text>
 <page_footer><loc_239><loc_463><loc_247><loc_469>11</page_footer>
@@ -200,20 +200,20 @@
 <text><loc_252><loc_133><loc_445><loc_161>dian cell size for all table cells. The usage of median during the computations, helps to eliminate outliers caused by occasional column spans which are usually wider than the normal.</text>
 <text><loc_41><loc_176><loc_234><loc_250>However, it is possible to mitigate those limitations by combining the TableFormer predictions with the information already present inside a programmatic PDF document. More specifically, PDF documents can be seen as a sequence of PDF cells where each cell is described by its content and bounding box. If we are able to associate the PDF cells with the predicted table cells, we can directly link the PDF cell content to the table cell structure and use the PDF bounding boxes to correct misalignments in the predicted table cell bounding boxes.</text>
 <text><loc_41><loc_252><loc_234><loc_265>Here is a step-by-step description of the prediction postprocessing:</text>
-<unordered_list><list_item><loc_41><loc_267><loc_234><loc_288>Get the minimal grid dimensions - number of rows and columns for the predicted table structure. This represents the most granular grid for the underlying table structure.</list_item>
+<ordered_list><list_item><loc_41><loc_267><loc_234><loc_288>Get the minimal grid dimensions - number of rows and columns for the predicted table structure. This represents the most granular grid for the underlying table structure.</list_item>
 <list_item><loc_41><loc_290><loc_234><loc_318>Generate pair-wise matches between the bounding boxes of the PDF cells and the predicted cells. The Intersection Over Union (IOU) metric is used to evaluate the quality of the matches.</list_item>
 <list_item><loc_41><loc_320><loc_234><loc_334>Use a carefully selected IOU threshold to designate the matches as "good" ones and "bad" ones.</list_item>
 <list_item><loc_41><loc_336><loc_234><loc_356>3.a. If all IOU scores in a column are below the threshold, discard all predictions (structure and bounding boxes) for that column.</list_item>
 <list_item><loc_41><loc_359><loc_234><loc_379>Find the best-fitting content alignment for the predicted cells with good IOU per each column. The alignment of the column can be identified by the following formula:</list_item>
-</unordered_list>
+</ordered_list>
 <formula><loc_90><loc_394><loc_234><loc_413></formula>
 <text><loc_41><loc_421><loc_234><loc_435>where c is one of { left, centroid, right } and x$_{c}$ is the xcoordinate for the corresponding point.</text>
-<unordered_list><list_item><loc_41><loc_437><loc_234><loc_450>Use the alignment computed in step 4, to compute the median x -coordinate for all table columns and the me-</list_item>
+<ordered_list><list_item><loc_41><loc_437><loc_234><loc_450>Use the alignment computed in step 4, to compute the median x -coordinate for all table columns and the me-</list_item>
 <list_item><loc_252><loc_164><loc_445><loc_177>Snap all cells with bad IOU to their corresponding median x -coordinates and cell sizes.</list_item>
 <list_item><loc_252><loc_179><loc_445><loc_245>Generate a new set of pair-wise matches between the corrected bounding boxes and PDF cells. This time use a modified version of the IOU metric, where the area of the intersection between the predicted and PDF cells is divided by the PDF cell area. In case there are multiple matches for the same PDF cell, the prediction with the higher score is preferred. This covers the cases where the PDF cells are smaller than the area of predicted or corrected prediction cells.</list_item>
 <list_item><loc_252><loc_247><loc_445><loc_290>In some rare occasions, we have noticed that TableFormer can confuse a single column as two. When the postprocessing steps are applied, this results with two predicted columns pointing to the same PDF column. In such case we must de-duplicate the columns according to highest total column intersection score.</list_item>
 <list_item><loc_252><loc_293><loc_445><loc_359>Pick up the remaining orphan cells. There could be cases, when after applying all the previous post-processing steps, some PDF cells could still remain without any match to predicted cells. However, it is still possible to deduce the correct matching for an orphan PDF cell by mapping its bounding box on the geometry of the grid. This mapping decides if the content of the orphan cell will be appended to an already matched table cell, or a new table cell should be created to match with the orphan.</list_item>
-</unordered_list>
+</ordered_list>
 <text><loc_252><loc_361><loc_445><loc_381>9a. Compute the top and bottom boundary of the horizontal band for each grid row (min/max y coordinates per row).</text>
 <unordered_list><list_item><loc_252><loc_384><loc_445><loc_397>9b. Intersect the orphan's bounding box with the row bands, and map the cell to the closest grid row.</list_item>
 <list_item><loc_252><loc_399><loc_445><loc_420>9c. Compute the left and right boundary of the vertical band for each grid column (min/max x coordinates per column).</list_item>

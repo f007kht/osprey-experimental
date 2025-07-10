@@ -34,12 +34,12 @@
 </unordered_list>
 <section_header_level_1><loc_60><loc_225><loc_286><loc_234>Key Features That Changed Word Processing</section_header_level_1>
 <text><loc_60><loc_242><loc_432><loc_267>The evolution of word processors wasn't just about hardware or software improvements-it was about the features that revolutionized how people wrote and edited. Some of these transformative features include:</text>
-<unordered_list><list_item><loc_76><loc_275><loc_428><loc_291>Undo/Redo : Introduced in the 1980s, the ability to undo mistakes and redo actions made experimentation and error correction much easier.</list_item>
+<ordered_list><list_item><loc_76><loc_275><loc_428><loc_291>Undo/Redo : Introduced in the 1980s, the ability to undo mistakes and redo actions made experimentation and error correction much easier.</list_item>
 <list_item><loc_76><loc_292><loc_434><loc_308>Spell Check and Grammar Check : By the 1990s, these became standard, allowing users to spot errors automatically.</list_item>
 <list_item><loc_76><loc_308><loc_409><loc_324>Templates : Pre-designed formats for documents, such as resumes, letters, and invoices, helped users save time.</list_item>
 <list_item><loc_76><loc_324><loc_422><loc_340>Track Changes : A game-changer for collaboration, this feature allowed multiple users to suggest edits while maintaining the original text.</list_item>
 <list_item><loc_76><loc_341><loc_438><loc_365>Real-Time Collaboration : Tools like Google Docs and Microsoft 365 enabled multiple users to edit the same document simultaneously, forever changing teamwork dynamics.</list_item>
-</unordered_list>
+</ordered_list>
 <section_header_level_1><loc_60><loc_390><loc_262><loc_399>The Cultural Impact of Word Processors</section_header_level_1>
 <text><loc_60><loc_408><loc_436><loc_432>The word processor didn't just change workplaces-it changed culture. It democratized writing, enabling anyone with access to a computer to produce professional-quality documents. This shift had profound implications for education, business, and creative fields:</text>
 <page_break>
@@ -49,12 +49,12 @@
 </unordered_list>
 <section_header_level_1><loc_60><loc_142><loc_248><loc_151>Word Processors in a Post-Digital Era</section_header_level_1>
 <text><loc_60><loc_159><loc_438><loc_167>As we move further into the 21st century, the role of the word processor continues to evolve:</text>
-<unordered_list><list_item><loc_76><loc_176><loc_440><loc_208>Artificial Intelligence : Modern word processors are leveraging AI to suggest content improvements. Tools like Grammarly, ProWritingAid, and even native features in Word now analyze tone, conciseness, and clarity. Some AI systems can even generate entire paragraphs or rewrite sentences.</list_item>
+<ordered_list><list_item><loc_76><loc_176><loc_440><loc_208>Artificial Intelligence : Modern word processors are leveraging AI to suggest content improvements. Tools like Grammarly, ProWritingAid, and even native features in Word now analyze tone, conciseness, and clarity. Some AI systems can even generate entire paragraphs or rewrite sentences.</list_item>
 <list_item><loc_76><loc_208><loc_432><loc_241>Integration with Other Tools : Word processors are no longer standalone. They integrate with task managers, cloud storage, and project management platforms. For instance, Google Docs syncs with Google Drive, while Microsoft Word integrates seamlessly with OneDrive and Teams.</list_item>
 <list_item><loc_76><loc_241><loc_422><loc_274>Voice Typing : Speech-to-text capabilities have made word processing more accessible, particularly for those with disabilities. Tools like Dragon NaturallySpeaking and built-in options in Google Docs and Microsoft Word have made dictation mainstream.</list_item>
 <list_item><loc_76><loc_274><loc_434><loc_298>Multimedia Documents : Word processing has expanded beyond text. Modern tools allow users to embed images, videos, charts, and interactive elements, transforming simple documents into rich multimedia experiences.</list_item>
 <list_item><loc_76><loc_299><loc_429><loc_323>Cross-Platform Accessibility : Thanks to cloud computing, documents can now be accessed and edited across devices. Whether you're on a desktop, tablet, or smartphone, you can continue working seamlessly.</list_item>
-</unordered_list>
+</ordered_list>
 <section_header_level_1><loc_60><loc_348><loc_192><loc_357>A Glimpse Into the Future</section_header_level_1>
 <text><loc_60><loc_366><loc_433><loc_382>The word processor's future lies in adaptability and intelligence. Some exciting possibilities include:</text>
 <unordered_list><list_item><loc_76><loc_390><loc_435><loc_406>Fully AI-Assisted Writing : Imagine a word processor that understands your writing style, drafts emails, or creates entire essays based on minimal input.</list_item>
