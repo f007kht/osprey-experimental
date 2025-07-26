@@ -332,3 +332,18 @@ class ProcessingPipeline(str, Enum):
     STANDARD = "standard"
     VLM = "vlm"
     ASR = "asr"
+
+
+class ThreadedPdfPipelineOptions(PdfPipelineOptions):
+    """Pipeline options for the threaded PDF pipeline with batching and backpressure control"""
+
+    # Batch sizes for different stages
+    ocr_batch_size: int = 4
+    layout_batch_size: int = 4
+    table_batch_size: int = 4
+
+    # Timing control
+    batch_timeout_seconds: float = 2.0
+
+    # Backpressure and queue control
+    queue_max_size: int = 100
