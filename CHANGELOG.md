@@ -1,3 +1,14 @@
+## [v2.43.0](https://github.com/docling-project/docling/releases/tag/v2.43.0) - 2025-07-28
+
+### Feature
+
+* Threaded PDF pipeline ([#1951](https://github.com/docling-project/docling/issues/1951)) ([`aed772a`](https://github.com/docling-project/docling/commit/aed772ab332a9c4d2a95875c249f8646268b016d))
+
+### Fix
+
+* **markdown:** Ensure correct parsing of nested lists ([#1995](https://github.com/docling-project/docling/issues/1995)) ([`aec29a7`](https://github.com/docling-project/docling/commit/aec29a73152ef09028ebf09d9527e15cda8d1437))
+* **HTML:** Remove an unnecessary print command ([#1988](https://github.com/docling-project/docling/issues/1988)) ([`945721a`](https://github.com/docling-project/docling/commit/945721a15dde80bbf836df8d87f278cf9a1baa51))
+
 ## [v2.42.2](https://github.com/docling-project/docling/releases/tag/v2.42.2) - 2025-07-24
 
 ### Fix
