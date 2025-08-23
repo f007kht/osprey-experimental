@@ -1,3 +1,9 @@
+## [v2.47.1](https://github.com/docling-project/docling/releases/tag/v2.47.1) - 2025-08-23
+
+### Fix
+
+* Vllm extra only for linux x86_64 ([#2126](https://github.com/docling-project/docling/issues/2126)) ([`488f6cd`](https://github.com/docling-project/docling/commit/488f6cdd2da1e6065e56843413b56b41cb208b2c))
+
 ## [v2.47.0](https://github.com/docling-project/docling/releases/tag/v2.47.0) - 2025-08-22
 
 ### Feature
