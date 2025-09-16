@@ -114,7 +114,11 @@ class RapidOcrOptions(OcrOptions):
     cls_model_path: Optional[str] = None  # same default as rapidocr
     rec_model_path: Optional[str] = None  # same default as rapidocr
     rec_keys_path: Optional[str] = None  # same default as rapidocr
-    rec_font_path: Optional[str] = None  # same default as rapidocr
+    rec_font_path: Optional[str] = None  # Deprecated, please use font_path instead
+    font_path: Optional[str] = None  # same default as rapidocr
+
+    # Dictionary to overwrite or pass-through additional parameters
+    rapidocr_params: Dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(
         extra="forbid",
