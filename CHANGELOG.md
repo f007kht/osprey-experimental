@@ -1,3 +1,18 @@
+## [v2.53.0](https://github.com/docling-project/docling/releases/tag/v2.53.0) - 2025-09-17
+
+### Feature
+
+* Add granite-docling model ([#2272](https://github.com/docling-project/docling/issues/2272)) ([`17afb66`](https://github.com/docling-project/docling/commit/17afb664d005168b5a6f12a2df4432076a9329bb))
+* **RapidOcr:** Support generic extra arguments for RapidOcr ([#2266](https://github.com/docling-project/docling/issues/2266)) ([`0e95171`](https://github.com/docling-project/docling/commit/0e95171dd64733ba52f2f0906642be24f6237977))
+
+### Fix
+
+* Handle empty result from RapidOCR to avoid crash ([#2264](https://github.com/docling-project/docling/issues/2264)) ([`609d902`](https://github.com/docling-project/docling/commit/609d902eef157ae68e33faa26d73533ef7a4a749))
+
+### Documentation
+
+* Describe examples ([#2262](https://github.com/docling-project/docling/issues/2262)) ([`ff351fd`](https://github.com/docling-project/docling/commit/ff351fd40c4b635133401e77dea89bec8cd0ca33))
+
 ## [v2.52.0](https://github.com/docling-project/docling/releases/tag/v2.52.0) - 2025-09-11
 
 ### Feature
