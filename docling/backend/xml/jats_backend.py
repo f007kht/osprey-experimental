@@ -352,7 +352,7 @@ class JatsDocumentBackend(DeclarativeDocumentBackend):
 
         return
 
-    def _parse_element_citation(self, node: etree._Element) -> str:  # noqa: C901
+    def _parse_element_citation(self, node: etree._Element) -> str:
         citation: Citation = {
             "author_names": "",
             "title": "",
@@ -538,7 +538,7 @@ class JatsDocumentBackend(DeclarativeDocumentBackend):
         return
 
     @staticmethod
-    def parse_table_data(element: Tag) -> Optional[TableData]:  # noqa: C901
+    def parse_table_data(element: Tag) -> Optional[TableData]:
         # TODO, see how to implement proper support for rich tables from HTML backend
         nested_tables = element.find("table")
         if nested_tables is not None:
@@ -713,7 +713,7 @@ class JatsDocumentBackend(DeclarativeDocumentBackend):
         )
         return
 
-    def _walk_linear(  # noqa: C901
+    def _walk_linear(
         self, doc: DoclingDocument, parent: NodeItem, node: etree._Element
     ) -> str:
         skip_tags = ["term"]
