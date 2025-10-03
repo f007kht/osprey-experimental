@@ -1160,6 +1160,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-dependency" },
+    { name = "pytest-durations" },
     { name = "pytest-xdist" },
     { name = "python-semantic-release" },
     { name = "types-openpyxl" },
@@ -1243,6 +1244,7 @@ dev = [
     { name = "pytest", specifier = "~=8.3" },
     { name = "pytest-cov", specifier = ">=6.1.1" },
     { name = "pytest-dependency", specifier = "~=0.6" },
+    { name = "pytest-durations", specifier = "~=1.6.1" },
     { name = "pytest-xdist", specifier = "~=3.3" },
     { name = "python-semantic-release", specifier = "~=7.32" },
     { name = "types-openpyxl", specifier = "~=3.1" },
@@ -5541,6 +5543,18 @@ dependencies = [
     { name = "setuptools", version = "80.9.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' or platform_machine != 'x86_64' or sys_platform != 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7e/3b/317cc04e77d707d338540ca67b619df8f247f3f4c9f40e67bf5ea503ad94/pytest-dependency-0.6.0.tar.gz", hash = "sha256:934b0e6a39d95995062c193f7eaeed8a8ffa06ff1bcef4b62b0dc74a708bacc1", size = 19499, upload-time = "2023-12-31T20:38:54.991Z" }
+
+[[package]]
+name = "pytest-durations"
+version = "1.6.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/90/59/1e73dd71c87aa47bcf37e4f5c25596e94d5628bee15bdbeaaae1585a26e4/pytest_durations-1.6.1.tar.gz", hash = "sha256:bc43fbabb1fef6bb75766d35a6bf142c1e153fef01677ccd4705cc376bf2be34", size = 11630, upload-time = "2025-08-29T06:49:54.554Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c8/a2/1d1914f3ff2c85003962b3f07f7b908fc9fd745584e9a51d392a65e261f6/pytest_durations-1.6.1-py3-none-any.whl", hash = "sha256:af7e0f6b883e7897c8dc1cb294016c6144c25f93a8930d48aec4b40ef461c51e", size = 13521, upload-time = "2025-08-29T06:49:53.386Z" },
+]
 
 [[package]]
 name = "pytest-xdist"
