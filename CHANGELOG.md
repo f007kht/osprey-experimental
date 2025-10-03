@@ -1,3 +1,17 @@
+## [v2.55.1](https://github.com/docling-project/docling/releases/tag/v2.55.1) - 2025-10-03
+
+### Fix
+
+* **markdown:** Setext heading support ([#2359](https://github.com/docling-project/docling/issues/2359)) ([`ee73ffa`](https://github.com/docling-project/docling/commit/ee73ffae15b2bb60c42e333fca4684bd57eeff31))
+* **docs:** Fixed the color scheme ([#2371](https://github.com/docling-project/docling/issues/2371)) ([`246de77`](https://github.com/docling-project/docling/commit/246de77d8ce53fbeb7a93a6412c461df82269685))
+* Empty table handling ([#2365](https://github.com/docling-project/docling/issues/2365)) ([`ca2be7f`](https://github.com/docling-project/docling/commit/ca2be7ff3ad1223eaea9954543f8d82e4d64e53e))
+* Add table raw content when no table structure model is used ([#1815](https://github.com/docling-project/docling/issues/1815)) ([`4f295ed`](https://github.com/docling-project/docling/commit/4f295ed0511e21d215129c5850a7d84e748c7a1d))
+
+### Documentation
+
+* Example using Hashicorp Vault PII transform ([#2373](https://github.com/docling-project/docling/issues/2373)) ([`a975a79`](https://github.com/docling-project/docling/commit/a975a790c997268bc5f613631943ca074844f290))
+* Jobkit and connectors ([#2357](https://github.com/docling-project/docling/issues/2357)) ([`e6c3b05`](https://github.com/docling-project/docling/commit/e6c3b05e63e7b4ef0a3e52205dedde4accbea1f1))
+
 ## [v2.55.0](https://github.com/docling-project/docling/releases/tag/v2.55.0) - 2025-09-30
 
 ### Feature
