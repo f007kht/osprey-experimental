@@ -49,7 +49,7 @@ from docling.datamodel.document import ConversionResult
 from docling.datamodel.pipeline_options import (
     AsrPipelineOptions,
     ConvertPipelineOptions,
-    EasyOcrOptions,
+    OcrAutoOptions,
     OcrOptions,
     PaginatedPipelineOptions,
     PdfBackend,
@@ -374,7 +374,7 @@ def convert(  # noqa: C901
                 f"Use the option --show-external-plugins to see the options allowed with external plugins."
             ),
         ),
-    ] = EasyOcrOptions.kind,
+    ] = OcrAutoOptions.kind,
     ocr_lang: Annotated[
         Optional[str],
         typer.Option(

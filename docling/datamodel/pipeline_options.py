@@ -81,6 +81,13 @@ class OcrOptions(BaseOptions):
     )
 
 
+class OcrAutoOptions(OcrOptions):
+    """Options for pick OCR engine automatically."""
+
+    kind: ClassVar[Literal["auto"]] = "auto"
+    lang: List[str] = []
+
+
 class RapidOcrOptions(OcrOptions):
     """Options for the RapidOCR engine."""
 
@@ -255,6 +262,7 @@ class PdfBackend(str, Enum):
 class OcrEngine(str, Enum):
     """Enum of valid OCR engines."""
 
+    AUTO = "auto"
     EASYOCR = "easyocr"
     TESSERACT_CLI = "tesseract_cli"
     TESSERACT = "tesseract"
@@ -336,7 +344,7 @@ class PdfPipelineOptions(PaginatedPipelineOptions):
     # If True, text from backend will be used instead of generated text
 
     table_structure_options: TableStructureOptions = TableStructureOptions()
-    ocr_options: OcrOptions = EasyOcrOptions()
+    ocr_options: OcrOptions = OcrAutoOptions()
     layout_options: LayoutOptions = LayoutOptions()
 
     images_scale: float = 1.0
