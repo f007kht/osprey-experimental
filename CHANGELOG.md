@@ -1,3 +1,9 @@
+## [v2.56.1](https://github.com/docling-project/docling/releases/tag/v2.56.1) - 2025-10-13
+
+### Fix
+
+* Avoid downloading easyocr models by default ([#2454](https://github.com/docling-project/docling/issues/2454)) ([`688a7df`](https://github.com/docling-project/docling/commit/688a7dfd38ba3e3aea64f7fe027815e910818785))
+
 ## [v2.56.0](https://github.com/docling-project/docling/releases/tag/v2.56.0) - 2025-10-13
 
 ### Feature

@@ -1084,7 +1084,7 @@ wheels = [
 
 [[package]]
 name = "docling"
-version = "2.56.0"
+version = "2.56.1"
 source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
