@@ -1,7 +1,7 @@
 from pathlib import PurePath
 from typing import Annotated, Literal, Optional, Union
 
-from pydantic import AnyUrl, BaseModel, Field
+from pydantic import AnyUrl, BaseModel, Field, SecretStr
 
 
 class BaseBackendOptions(BaseModel):
@@ -64,7 +64,19 @@ class MarkdownBackendOptions(BaseBackendOptions):
     )
 
 
+class PdfBackendOptions(BaseBackendOptions):
+    """Backend options for pdf document backends."""
+
+    kind: Literal["pdf"] = Field("pdf", exclude=True, repr=False)
+    password: Optional[SecretStr] = None
+
+
 BackendOptions = Annotated[
-    Union[DeclarativeBackendOptions, HTMLBackendOptions, MarkdownBackendOptions],
+    Union[
+        DeclarativeBackendOptions,
+        HTMLBackendOptions,
+        MarkdownBackendOptions,
+        PdfBackendOptions,
+    ],
     Field(discriminator="kind"),
 ]
