@@ -1,3 +1,19 @@
+## [v2.59.0](https://github.com/docling-project/docling/releases/tag/v2.59.0) - 2025-10-30
+
+### Feature
+
+* **vlm:** Add num_tokens as attribtue for VlmPrediction ([#2489](https://github.com/docling-project/docling/issues/2489)) ([`b6c892b`](https://github.com/docling-project/docling/commit/b6c892b505bf29a12ce7e8d9b4e88e1253440ebc))
+* Support for Python 3.14 ([#2530](https://github.com/docling-project/docling/issues/2530)) ([`cdffb47`](https://github.com/docling-project/docling/commit/cdffb47b9a12da23489e345ea633786914776f7d))
+
+### Fix
+
+* Xlsx cell parsing, now returning values instead of formulas ([#2520](https://github.com/docling-project/docling/issues/2520)) ([`d9c90eb`](https://github.com/docling-project/docling/commit/d9c90eb45e899b2f3b608d959cb664c016e63821))
+
+### Documentation
+
+* Add details and examples on optimal GPU setup ([#2531](https://github.com/docling-project/docling/issues/2531)) ([`97aa06b`](https://github.com/docling-project/docling/commit/97aa06bfbca6f9a0bfca81c4ed99bf83f36c9f9b))
+* Update opensearch notebook and backend documentation ([#2519](https://github.com/docling-project/docling/issues/2519)) ([`9a6fdf9`](https://github.com/docling-project/docling/commit/9a6fdf936bd59421c9b133c065059c3a0783ca2b))
+
 ## [v2.58.0](https://github.com/docling-project/docling/releases/tag/v2.58.0) - 2025-10-22
 
 ### Feature
