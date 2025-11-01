@@ -59,8 +59,9 @@ if "TESSDATA_PREFIX" not in os.environ:
 
 import streamlit as st
 
-from docling.document_converter import DocumentConverter
-from docling.datamodel.pipeline_options import PipelineOptions, TesseractOcrOptions
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
 
 # Set up the Streamlit page title
 st.title("📄 Docling Document Processor")
@@ -85,15 +86,21 @@ if uploaded_file is not None:
     st.info(f"Processing `{uploaded_file.name}`... This might take a moment.")
 
     try:
-        # Configure pipeline options to use Tesseract OCR
+        # Configure pipeline options to use Tesseract OCR for PDFs
         # This avoids rapidocr permission errors on Streamlit Cloud's read-only filesystem
-        pipeline_options = PipelineOptions()
+        # Other formats (DOCX, HTML, etc.) will use default options which don't require OCR
+        pipeline_options = PdfPipelineOptions()
         pipeline_options.do_ocr = True
         pipeline_options.ocr_options = TesseractOcrOptions()
 
-        # Initialize the converter with our custom options
+        # Initialize the converter with format-specific options
+        # PDF uses Tesseract, other formats use defaults
         with st.spinner("Initializing Docling (this may take a while on first run)..."):
-            converter = DocumentConverter(pipeline_options=pipeline_options)
+            converter = DocumentConverter(
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+                }
+            )
 
         # Run the conversion process
         with st.spinner(f"Converting `{uploaded_file.name}`..."):
