@@ -69,6 +69,7 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 @st.cache_resource
 def get_converter():
     """Get or create a cached DocumentConverter instance with Tesseract OCR."""
+    # Note: Cannot use Streamlit UI elements (st.error, st.exception) inside cached functions
     pipeline_options = PdfPipelineOptions()
     pipeline_options.do_ocr = True
     # Explicitly set Tesseract OCR to avoid RapidOCR fallback and permission errors
