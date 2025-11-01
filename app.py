@@ -27,7 +27,9 @@ os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"
 
 import streamlit as st
 
-from docling.document_converter import DocumentConverter
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
 
 # Set up the Streamlit page title
 st.title("📄 Docling Document Processor")
@@ -56,7 +58,16 @@ if uploaded_file is not None:
         # This will download models on the first run, which can be slow.
         # Use tesseract OCR engine (compatible with Streamlit Cloud's read-only filesystem)
         with st.spinner("Initializing Docling (this may take a while on first run)..."):
-            converter = DocumentConverter(ocr_engine="tesseract")
+            # Configure pipeline options to use Tesseract OCR
+            pipeline_options = PdfPipelineOptions()
+            pipeline_options.do_ocr = True
+            pipeline_options.ocr_options = TesseractOcrOptions()
+            
+            converter = DocumentConverter(
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+                }
+            )
 
         # Run the conversion process
         with st.spinner(f"Converting `{uploaded_file.name}`..."):
