@@ -1,29 +1,30 @@
 FROM python:3.11-slim-bookworm
 
-ENV GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
-
-RUN apt-get update \
-    && apt-get install -y libgl1 libglib2.0-0 curl wget git procps \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    tesseract-ocr \
+    tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
-# This will install torch with *only* cpu support
-# Remove the --extra-index-url part if you want to install all the gpu requirements
-# For more details in the different torch distribution visit https://pytorch.org/.
-RUN pip install --no-cache-dir docling --extra-index-url https://download.pytorch.org/whl/cpu
+# Set working directory
+WORKDIR /app
 
-ENV HF_HOME=/tmp/
-ENV TORCH_HOME=/tmp/
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --find-links https://download.pytorch.org/whl/cpu/torch_stable.html \
+    -r requirements.txt
 
-COPY docs/examples/minimal.py /root/minimal.py
-
-RUN docling-tools models download
-
-# On container environments, always set a thread budget to avoid undesired thread congestion.
+# Set environment variables
+ENV OPENCV_IO_ENABLE_OPENEXR=0
+ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/tessdata
 ENV OMP_NUM_THREADS=4
 
-# On container shell:
-# > cd /root/
-# > python minimal.py
+# Copy app files
+COPY app.py .
 
-# Running as `docker run -e DOCLING_ARTIFACTS_PATH=/root/.cache/docling/models` will use the
-# model weights included in the container image.
+# Expose Streamlit port
+EXPOSE 8501
+
+# Run Streamlit
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]

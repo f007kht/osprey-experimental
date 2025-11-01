@@ -1,4 +1,14 @@
-# Osprey Streamlit Document Processor
+---
+title: Docling Document Processor
+emoji: 📄
+colorFrom: blue
+colorTo: purple
+sdk: docker
+sdk_version: 1.51.0
+app_port: 8501
+---
+
+# Osprey Docling Document Processor
 
 A Streamlit web application for processing documents using the Docling library. Upload documents (PDF, DOCX, PPTX, XLSX, images, audio) and extract their content as Markdown.
 
@@ -28,19 +38,26 @@ A Streamlit web application for processing documents using the Docling library. 
 
 ### Deployment
 
-The app is deployed on Streamlit Cloud. The deployment process and troubleshooting steps are documented in `deployment-logs/streamlit-cloud-deployment-log.txt`.
+The app is deployed on **Hugging Face Spaces**: https://huggingface.co/spaces/f007kht/osprey-docling
 
 **Key deployment notes:**
+- Uses Docker + Streamlit on Hugging Face Spaces
+- 16GB RAM available (vs 1GB on Streamlit Cloud free tier)
 - Uses `requirements.txt` for dependency management
-- Configured with CPU-only PyTorch builds for Streamlit Cloud compatibility
-- Dependencies are installed via `uv` package manager
+- Configured with CPU-only PyTorch builds for cloud compatibility
+- System dependencies (Tesseract OCR, libGL) installed via Dockerfile
+
+**Previous deployment attempts on Streamlit Cloud:**
+The deployment process and troubleshooting steps for Streamlit Cloud are documented in `deployment-logs/streamlit-cloud-deployment-log.txt`. Memory limitations (1GB RAM) on Streamlit Cloud's free tier led to migration to Hugging Face Spaces.
 
 ## Project Structure
 
 ```
 .
 ├── app.py                              # Main Streamlit application
+├── Dockerfile                          # Docker configuration for HF Spaces
 ├── requirements.txt                    # Python dependencies
+├── packages.txt                        # System dependencies (for reference)
 ├── deployment-logs/                    # Deployment logs and troubleshooting
 │   └── streamlit-cloud-deployment-log.txt
 └── README.md                           # This file
