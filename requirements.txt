@@ -2,5 +2,7 @@
 torch
 torchvision
 torchaudio
+opencv-python-headless
 streamlit
 docling
+tesserocr

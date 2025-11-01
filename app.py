@@ -21,6 +21,10 @@
 import os
 import tempfile
 
+# Set environment variable to use headless OpenCV before any imports
+# This prevents libGL.so.1 errors on headless systems like Streamlit Cloud
+os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"
+
 import streamlit as st
 
 from docling.document_converter import DocumentConverter
@@ -50,8 +54,9 @@ if uploaded_file is not None:
     try:
         # Initialize the converter
         # This will download models on the first run, which can be slow.
+        # Use tesseract OCR engine (compatible with Streamlit Cloud's read-only filesystem)
         with st.spinner("Initializing Docling (this may take a while on first run)..."):
-            converter = DocumentConverter()
+            converter = DocumentConverter(ocr_engine="tesseract")
 
         # Run the conversion process
         with st.spinner(f"Converting `{uploaded_file.name}`..."):
