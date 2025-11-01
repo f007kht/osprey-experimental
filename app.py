@@ -60,9 +60,14 @@ if "TESSDATA_PREFIX" not in os.environ:
 
 import streamlit as st
 
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
-from docling.document_converter import DocumentConverter, PdfFormatOption
+try:
+    from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
+    from docling.document_converter import DocumentConverter, PdfFormatOption
+except Exception as e:
+    st.error(f"Failed to import docling modules: {e}")
+    st.exception(e)
+    st.stop()
 
 # Cache the converter to avoid reinitializing on every upload
 # This prevents memory spikes from loading models multiple times
