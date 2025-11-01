@@ -21,6 +21,7 @@
 import os
 import subprocess
 import tempfile
+import traceback
 
 # Set environment variable to use headless OpenCV before any imports
 # This prevents libGL.so.1 errors on headless systems like Streamlit Cloud
@@ -63,6 +64,22 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
 
+# Cache the converter to avoid reinitializing on every upload
+# This prevents memory spikes from loading models multiple times
+@st.cache_resource
+def get_converter():
+    """Get or create a cached DocumentConverter instance with Tesseract OCR."""
+    pipeline_options = PdfPipelineOptions()
+    pipeline_options.do_ocr = True
+    # Explicitly set Tesseract OCR to avoid RapidOCR fallback and permission errors
+    pipeline_options.ocr_options = TesseractOcrOptions()
+    
+    return DocumentConverter(
+        format_options={
+            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+        }
+    )
+
 # Set up the Streamlit page title
 st.title("📄 Docling Document Processor")
 st.write("Upload a document (PDF, DOCX, PPTX, etc.) to process it with Docling.")
@@ -86,21 +103,10 @@ if uploaded_file is not None:
     st.info(f"Processing `{uploaded_file.name}`... This might take a moment.")
 
     try:
-        # Configure pipeline options to use Tesseract OCR for PDFs
-        # This avoids rapidocr permission errors on Streamlit Cloud's read-only filesystem
-        # Other formats (DOCX, HTML, etc.) will use default options which don't require OCR
-        pipeline_options = PdfPipelineOptions()
-        pipeline_options.do_ocr = True
-        pipeline_options.ocr_options = TesseractOcrOptions()
-
-        # Initialize the converter with format-specific options
-        # PDF uses Tesseract, other formats use defaults
-        with st.spinner("Initializing Docling (this may take a while on first run)..."):
-            converter = DocumentConverter(
-                format_options={
-                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-                }
-            )
+        # Get the cached converter (initializes once, then reuses)
+        # This prevents memory spikes from loading models multiple times
+        with st.spinner("Loading Docling (this may take a while on first run)..."):
+            converter = get_converter()
 
         # Run the conversion process
         with st.spinner(f"Converting `{uploaded_file.name}`..."):
@@ -116,12 +122,18 @@ if uploaded_file is not None:
 
         # Display the Markdown in the app.
         # We use a text_area for long outputs, but st.markdown() also works.
-        st.text_area("Markdown Output", markdown_output, height=600)
+        # Unique key prevents conflicts when multiple files are processed
+        st.text_area("Markdown Output", markdown_output, height=600, key=f"output_{uploaded_file.name}")
 
     except Exception as e:
         st.error(f"An error occurred during processing: {e}")
+        # Show full traceback in Streamlit for debugging
+        st.exception(e)
 
     finally:
         # Clean up the temporary file
-        if os.path.exists(tmp_file_path):
-            os.remove(tmp_file_path)
+        if tmp_file_path and os.path.exists(tmp_file_path):
+            try:
+                os.remove(tmp_file_path)
+            except Exception:
+                pass  # Ignore cleanup errors
