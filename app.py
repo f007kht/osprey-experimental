@@ -19,17 +19,48 @@
 # - For batch processing or saving outputs to files, see `docs/examples/batch_convert.py`.
 
 import os
+import subprocess
 import tempfile
 
 # Set environment variable to use headless OpenCV before any imports
 # This prevents libGL.so.1 errors on headless systems like Streamlit Cloud
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"
 
+# Set TESSDATA_PREFIX to point to Tesseract language data directory
+# This is required for tesserocr to find language models
+if "TESSDATA_PREFIX" not in os.environ:
+    try:
+        # Try to find tessdata directory using dpkg (Debian/Ubuntu)
+        result = subprocess.run(
+            ["dpkg", "-L", "tesseract-ocr-eng"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            for line in result.stdout.split("\n"):
+                if line.endswith("tessdata"):
+                    os.environ["TESSDATA_PREFIX"] = line
+                    break
+    except Exception:
+        pass
+    
+    # Fallback to common paths if detection failed
+    if "TESSDATA_PREFIX" not in os.environ:
+        common_paths = [
+            "/usr/share/tesseract-ocr/tessdata",
+            "/usr/share/tesseract-ocr/4.00/tessdata",
+            "/usr/share/tesseract-ocr/5/tessdata",
+        ]
+        for path in common_paths:
+            if os.path.exists(path):
+                os.environ["TESSDATA_PREFIX"] = path
+                break
+
 import streamlit as st
 
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
-from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling.document_converter import DocumentConverter
+from docling.datamodel.pipeline_options import PipelineOptions, TesseractOcrOptions
 
 # Set up the Streamlit page title
 st.title("📄 Docling Document Processor")
@@ -54,20 +85,15 @@ if uploaded_file is not None:
     st.info(f"Processing `{uploaded_file.name}`... This might take a moment.")
 
     try:
-        # Initialize the converter
-        # This will download models on the first run, which can be slow.
-        # Use tesseract OCR engine (compatible with Streamlit Cloud's read-only filesystem)
+        # Configure pipeline options to use Tesseract OCR
+        # This avoids rapidocr permission errors on Streamlit Cloud's read-only filesystem
+        pipeline_options = PipelineOptions()
+        pipeline_options.do_ocr = True
+        pipeline_options.ocr_options = TesseractOcrOptions()
+
+        # Initialize the converter with our custom options
         with st.spinner("Initializing Docling (this may take a while on first run)..."):
-            # Configure pipeline options to use Tesseract OCR
-            pipeline_options = PdfPipelineOptions()
-            pipeline_options.do_ocr = True
-            pipeline_options.ocr_options = TesseractOcrOptions()
-            
-            converter = DocumentConverter(
-                format_options={
-                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
-                }
-            )
+            converter = DocumentConverter(pipeline_options=pipeline_options)
 
         # Run the conversion process
         with st.spinner(f"Converting `{uploaded_file.name}`..."):
