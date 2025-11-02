@@ -1,0 +1,20 @@
+[server]
+# Disable XSRF protection for Hugging Face Spaces
+# HF Spaces handles security at the platform level
+enableXsrfProtection = false
+
+# Maximum upload size (200MB - Hugging Face Spaces free tier limit)
+maxUploadSize = 200
+
+# Enable file uploader
+enableCORS = false
+
+[server.fileWatcherType]
+# Use polling instead of native file watcher for better compatibility
+# This helps avoid permission issues in containerized environments
+type = "poll"
+
+[server.headless]
+# Headless mode for cloud deployment
+headless = true
+

@@ -20,6 +20,9 @@ ENV OPENCV_IO_ENABLE_OPENEXR=0
 ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/tessdata
 ENV OMP_NUM_THREADS=4
 
+# Copy Streamlit config
+COPY .streamlit .streamlit
+
 # Copy app files
 COPY app.py .
 

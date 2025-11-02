@@ -38,7 +38,7 @@ A Streamlit web application for processing documents using the Docling library. 
 
 ### Deployment
 
-The app is deployed on **Hugging Face Spaces**: https://huggingface.co/spaces/f007kht/osprey-docling
+The app is deployed on **Hugging Face Spaces**: https://huggingface.co/spaces/f007kht/osprey-experimental
 
 **Key deployment notes:**
 - Uses Docker + Streamlit on Hugging Face Spaces
