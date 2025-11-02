@@ -16,3 +16,9 @@ fileWatcherType = "poll"
 # Headless mode for cloud deployment
 headless = true
 
+[browser]
+# Force UTF-8 encoding for all content
+gatherUsageStats = false
+serverAddress = "localhost"
+serverPort = 8501
+

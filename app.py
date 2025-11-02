@@ -353,11 +353,11 @@ if "embedding_model_name" not in st.session_state:
 
 # Sidebar configuration
 with st.sidebar:
-    st.header("⚙️ Configuration")
+    st.header("Configuration")
     
     # MongoDB Configuration (only if enabled)
     if ENABLE_MONGODB:
-        st.subheader("📊 MongoDB Storage")
+        st.subheader("MongoDB Storage")
         mongodb_enabled = st.checkbox(
             "Enable MongoDB Storage",
             value=True,
@@ -387,7 +387,7 @@ with st.sidebar:
         )
         
         st.divider()
-        st.subheader("🔍 Embedding Configuration")
+        st.subheader("Embedding Configuration")
         
         use_remote_embeddings = st.checkbox(
             "Use Remote Embeddings (VoyageAI)",
@@ -415,9 +415,9 @@ with st.sidebar:
             )
         
         if mongodb_enabled and not mongodb_connection_string:
-            st.warning("⚠️ MongoDB connection string is required for storage.")
+            st.warning("MongoDB connection string is required for storage.")
         if mongodb_enabled and use_remote_embeddings and not voyageai_api_key:
-            st.warning("⚠️ VoyageAI API key is required when using remote embeddings.")
+            st.warning("VoyageAI API key is required when using remote embeddings.")
     else:
         mongodb_enabled = False
         mongodb_connection_string = ""
@@ -437,7 +437,7 @@ with st.sidebar:
     st.session_state.embedding_model_name = embedding_model_name if ENABLE_MONGODB else DEFAULT_EMBEDDING_MODEL
 
 # Set up the Streamlit page title
-st.title("📄 Docling Document Processor")
+st.title("Docling Document Processor")
 st.write("Upload a document (PDF, DOCX, PPTX, etc.) to process it with Docling.")
 
 # 1. Create the document upload button
@@ -468,7 +468,7 @@ if uploaded_file is not None:
         with st.spinner(f"Converting `{uploaded_file.name}`..."):
             result = converter.convert(tmp_file_path)
 
-        st.success("✅ Document processed successfully!")
+        st.success("Document processed successfully!")
 
         # 3. Display the results
         st.subheader("Extracted Content (Markdown)")
@@ -483,7 +483,7 @@ if uploaded_file is not None:
 
         # 4. Download functionality - enabled by default
         st.divider()
-        st.subheader("📥 Download Processed Document")
+        st.subheader("Download Processed Document")
         
         if ENABLE_DOWNLOADS:
             st.write("Download the processed document in various formats:")
@@ -497,7 +497,7 @@ if uploaded_file is not None:
                 with col1:
                     md_data, md_filename = _prepare_download_data(result, "markdown", base_filename)
                     st.download_button(
-                        label="📄 Download Markdown",
+                        label="Download Markdown",
                         data=md_data,
                         file_name=md_filename,
                         mime="text/markdown",
@@ -509,7 +509,7 @@ if uploaded_file is not None:
                 with col2:
                     json_data, json_filename = _prepare_download_data(result, "json", base_filename)
                     st.download_button(
-                        label="📋 Download JSON",
+                        label="Download JSON",
                         data=json_data,
                         file_name=json_filename,
                         mime="application/json",
@@ -521,7 +521,7 @@ if uploaded_file is not None:
                 with col3:
                     txt_data, txt_filename = _prepare_download_data(result, "txt", base_filename)
                     st.download_button(
-                        label="📝 Download Text",
+                        label="Download Text",
                         data=txt_data,
                         file_name=txt_filename,
                         mime="text/plain",
@@ -533,7 +533,7 @@ if uploaded_file is not None:
                 with col4:
                     doctags_data, doctags_filename = _prepare_download_data(result, "doctags", base_filename)
                     st.download_button(
-                        label="🏷️ Download Doctags",
+                        label="Download Doctags",
                         data=doctags_data,
                         file_name=doctags_filename,
                         mime="text/plain",
@@ -541,16 +541,16 @@ if uploaded_file is not None:
                         use_container_width=True
                     )
             except Exception as e:
-                st.error(f"❌ Download feature unavailable: {e}")
+                st.error(f"Download feature unavailable: {e}")
                 st.exception(e)
                 # App continues normally - download failure doesn't break the app
         else:
-            st.warning("⚠️ Downloads are disabled in this deployment.")
-            st.info("💡 To enable downloads, set environment variable `ENABLE_DOWNLOADS=true`")
+            st.warning("Downloads are disabled in this deployment.")
+            st.info("To enable downloads, set environment variable `ENABLE_DOWNLOADS=true`")
 
         # 5. MongoDB Storage (if enabled)
         st.divider()
-        st.subheader("💾 Database Storage")
+        st.subheader("Database Storage")
         
         if ENABLE_MONGODB:
             if st.session_state.get("mongodb_enabled", False):
@@ -564,7 +564,7 @@ if uploaded_file is not None:
                 if is_configured:
                     col_save, col_info = st.columns([1, 2])
                     with col_save:
-                        if st.button("💾 Save to MongoDB", key=f"save_mongodb_{uploaded_file.name}", use_container_width=True):
+                        if st.button("Save to MongoDB", key=f"save_mongodb_{uploaded_file.name}", use_container_width=True):
                             try:
                                 with st.spinner("Saving document to MongoDB with embeddings..."):
                                     embedding_config = {
@@ -585,38 +585,38 @@ if uploaded_file is not None:
                                     )
                                     
                                     if success:
-                                        st.success("✅ Document saved to MongoDB successfully!")
-                                        st.info("💡 The vector search index is being created automatically. It may take a few minutes to be ready for queries.")
+                                        st.success("Document saved to MongoDB successfully!")
+                                        st.info("The vector search index is being created automatically. It may take a few minutes to be ready for queries.")
                                     else:
-                                        st.error("❌ Failed to save document to MongoDB. Check error messages above.")
+                                        st.error("Failed to save document to MongoDB. Check error messages above.")
                             except ImportError as e:
-                                st.error(f"❌ Missing dependency: {e}")
+                                st.error(f"Missing dependency: {e}")
                                 if st.session_state.use_remote_embeddings:
-                                    st.info("💡 Install MongoDB dependencies with: pip install pymongo[srv] voyageai")
+                                    st.info("Install MongoDB dependencies with: pip install pymongo[srv] voyageai")
                                 else:
-                                    st.info("💡 Install MongoDB dependencies with: pip install pymongo[srv] sentence-transformers")
+                                    st.info("Install MongoDB dependencies with: pip install pymongo[srv] sentence-transformers")
                             except ValueError as e:
-                                st.error(f"❌ Configuration error: {e}")
+                                st.error(f"Configuration error: {e}")
                             except Exception as e:
-                                st.error(f"❌ Error saving to MongoDB: {e}")
+                                st.error(f"Error saving to MongoDB: {e}")
                                 st.exception(e)
                                 # App continues normally - storage failure doesn't break the app
                     with col_info:
-                        st.info("💡 Stored documents include full markdown, JSON, and vector embeddings for RAG search.")
+                        st.info("Stored documents include full markdown, JSON, and vector embeddings for RAG search.")
                 else:
-                    st.warning("⚠️ MongoDB storage is enabled but not configured.")
+                    st.warning("MongoDB storage is enabled but not configured.")
                     if use_remote:
-                        st.info("ℹ️ Configure MongoDB connection and VoyageAI API key in the sidebar (⚙️ Configuration) to enable storage.")
+                        st.info("Configure MongoDB connection and VoyageAI API key in the sidebar (Configuration) to enable storage.")
                     else:
-                        st.info("ℹ️ Configure MongoDB connection in the sidebar (⚙️ Configuration) to enable storage.")
+                        st.info("Configure MongoDB connection in the sidebar (Configuration) to enable storage.")
             else:
-                st.info("ℹ️ MongoDB storage is available but not enabled.")
-                st.info("💡 Enable it in the sidebar under '⚙️ Configuration' → '📊 MongoDB Storage'")
+                st.info("MongoDB storage is available but not enabled.")
+                st.info("Enable it in the sidebar under 'Configuration' -> 'MongoDB Storage'")
                 if not PYMONGO_AVAILABLE:
-                    st.warning("⚠️ MongoDB dependencies not installed. Install with: `pip install pymongo[srv] sentence-transformers`")
+                    st.warning("MongoDB dependencies not installed. Install with: `pip install pymongo[srv] sentence-transformers`")
         else:
-            st.info("ℹ️ MongoDB storage feature is not enabled in this deployment.")
-            st.info("💡 To enable: Set environment variable `ENABLE_MONGODB=true` and install dependencies: `pymongo[srv] sentence-transformers`")
+            st.info("MongoDB storage feature is not enabled in this deployment.")
+            st.info("To enable: Set environment variable `ENABLE_MONGODB=true` and install dependencies: `pymongo[srv] sentence-transformers`")
 
     except Exception as e:
         st.error(f"An error occurred during processing: {e}")
