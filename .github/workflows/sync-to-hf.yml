@@ -53,15 +53,15 @@ jobs:
 
       - name: Push to Hugging Face Space
         env:
-          HF_TOKEN: ${{ secrets.osprey-space-push }}
+          HF_TOKEN: ${{ secrets.osprey_space_push }}
         run: |
           if [ -z "${HF_TOKEN}" ]; then
-            echo "::error::HF_TOKEN environment variable is empty. Check that osprey-space-push secret is configured."
+            echo "::error::HF_TOKEN environment variable is empty. Check that osprey_space_push secret is configured."
             echo ""
             echo "To configure:"
             echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
             echo "2. Click 'New repository secret'"
-            echo "3. Name: osprey-space-push"
+            echo "3. Name: osprey_space_push (must use underscores, not hyphens)"
             echo "4. Value: Your Hugging Face token (starts with 'hf_')"
             echo "5. Click 'Add secret'"
             exit 1
