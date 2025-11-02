@@ -355,6 +355,10 @@ if "embedding_model_name" not in st.session_state:
 with st.sidebar:
     st.header("Configuration")
     
+    # Show info if MongoDB is disabled
+    if not ENABLE_MONGODB:
+        st.info("MongoDB features are disabled. Set ENABLE_MONGODB=true to enable.")
+    
     # MongoDB Configuration (only if enabled)
     if ENABLE_MONGODB:
         st.subheader("MongoDB Storage")
