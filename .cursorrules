@@ -1,0 +1,267 @@
+# Cursor AI Rules for Docling Project
+
+## Error Troubleshooting
+
+When troubleshooting errors related to Docling:
+
+1. **Always visit the official Docling documentation**: https://docling-project.github.io/docling/
+   - Check the relevant documentation section for the feature or component experiencing issues
+   - Review examples and advanced options that may address the problem
+   - Consult the FAQ section for common issues and solutions
+
+2. **Before proposing solutions**, ensure you have:
+   - Reviewed the official documentation at https://docling-project.github.io/docling/
+   - Checked the Examples section for similar use cases
+   - Reviewed the Reference documentation for API details
+
+3. **When suggesting fixes**, cite the relevant documentation page from https://docling-project.github.io/docling/ that supports the solution.
+
+## Project Context
+
+This project uses Docling for document processing in a Streamlit application deployed on Hugging Face Spaces. Always refer to the official Docling documentation at https://docling-project.github.io/docling/ when encountering Docling-related errors or configuration issues.
+
+## Comprehensive Software Engineering Directives
+
+### Code Quality Standards
+
+- **Linting and Formatting**:
+  - Use Ruff for linting and code formatting (project standard)
+  - Use MyPy for static type checking (project standard)
+  - Follow PEP 8 style guidelines
+  - Maximum line length: 100 characters
+  - Run `pre-commit run --all-files` before committing
+
+- **Type Hints**:
+  - Type hints are required for all function signatures
+  - Use `typing` module for complex types
+  - Prefer `Optional[Type]` over `Type | None` for Python < 3.10 compatibility
+  - Use `Annotated` types when additional metadata is needed
+
+- **Documentation**:
+  - Docstrings required for all public functions, classes, and modules
+  - Use Google-style or NumPy-style docstrings consistently
+  - Include parameter descriptions, return types, and exceptions raised
+  - Add usage examples for complex functions
+
+- **Code Organization**:
+  - Keep functions focused and single-purpose
+  - Extract complex logic into separate functions
+  - Use meaningful variable and function names
+  - Avoid deep nesting (prefer early returns)
+
+### Testing Requirements
+
+- **Test Coverage**:
+  - All new features must include tests
+  - Maintain minimum code coverage thresholds
+  - Tests must be deterministic (no flaky tests)
+  - Use pytest for testing framework
+
+- **Test Quality**:
+  - Tests should be independent and isolated
+  - Use fixtures for common test setup
+  - Test both happy paths and error cases
+  - Use descriptive test names that explain what is being tested
+
+- **Reference Test Data**:
+  - Changes to reference test data require double review
+  - Regenerate with `DOCLING_GEN_TEST_DATA=1 uv run pytest`
+  - Verify changes don't introduce regressions
+
+- **Running Tests**:
+  - Run tests locally before pushing: `uv run pytest`
+  - All CI checks must pass before merge
+  - Tests run on multiple Python versions (3.9-3.14)
+
+### Documentation Standards
+
+- **Code Documentation**:
+  - All public APIs must have docstrings
+  - Document class attributes and instance variables
+  - Include examples in docstrings for complex APIs
+  - Keep docstrings up to date with code changes
+
+- **Project Documentation**:
+  - Update README.md for user-facing changes
+  - Update CONTRIBUTING.md for developer workflow changes
+  - Use MkDocs for documentation generation
+  - Run `mkdocs serve` to preview documentation locally
+
+- **Comments**:
+  - Use comments to explain "why", not "what"
+  - Keep comments current with code changes
+  - Remove commented-out code before committing
+
+### Security Practices
+
+- **Secrets Management**:
+  - Never commit secrets, API keys, or credentials to version control
+  - Use environment variables for sensitive configuration
+  - Use `.env` files locally (excluded via `.gitignore`)
+  - Store secrets in GitHub Secrets for CI/CD workflows
+
+- **Dependency Security**:
+  - Review dependencies for known security vulnerabilities
+  - Keep dependencies up to date
+  - Use `uv audit` or similar tools to check for vulnerabilities
+  - Prefer well-maintained packages with active security updates
+
+- **Access Control**:
+  - Follow principle of least privilege
+  - Validate and sanitize user inputs
+  - Use parameterized queries for database operations
+  - Implement proper authentication and authorization
+
+### Git Workflow Practices
+
+- **Commit Messages**:
+  - Use meaningful commit messages following conventional commits format
+  - Format: `<type>(<scope>): <subject>`
+  - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+  - Keep subject line under 72 characters
+  - Use body for detailed explanation if needed
+
+- **Branch Strategy**:
+  - Create feature branches for new work: `feature/description` or `fix/description`
+  - Keep commits atomic and focused on a single change
+  - Use squash merge for feature branches to main
+  - Never force push to main branch (except in emergencies with team approval)
+
+- **Remote Synchronization**:
+  - GitHub (`origin/main`) is the single source of truth
+  - All changes flow through GitHub first
+  - Never make direct edits to Hugging Face Space UI
+  - Hugging Face Space automatically syncs from GitHub via CI/CD
+
+- **Pull Requests**:
+  - Create PRs for all changes (except trivial fixes)
+  - Ensure all CI checks pass before requesting review
+  - Address reviewer feedback promptly
+  - Keep PRs focused and reasonably sized
+
+### Error Handling
+
+- **Exception Handling**:
+  - Use specific exception types, not bare `except:`
+  - Provide clear, actionable error messages
+  - Include context in error messages (what operation failed, why)
+  - Use custom exception classes for domain-specific errors
+
+- **Logging**:
+  - Log errors with appropriate log levels (ERROR, WARNING, INFO, DEBUG)
+  - Include stack traces for unexpected errors
+  - Don't log sensitive information (passwords, tokens, etc.)
+  - Use structured logging when appropriate
+
+- **Edge Cases**:
+  - Handle edge cases gracefully
+  - Validate inputs early
+  - Provide sensible defaults where appropriate
+  - Consider null/None values and empty collections
+
+### Performance Considerations
+
+- **Optimization Philosophy**:
+  - Profile before optimizing (measure first)
+  - Premature optimization is the root of all evil
+  - Write readable code first, optimize hot paths when needed
+  - Document performance characteristics in docstrings
+
+- **Caching**:
+  - Use caching where appropriate (e.g., `@st.cache_resource` in Streamlit)
+  - Cache expensive computations and model loads
+  - Invalidate caches when dependencies change
+  - Consider cache size limits and memory usage
+
+- **Resource Usage**:
+  - Consider memory usage for large document processing
+  - Use generators for large datasets
+  - Clean up resources (files, connections) properly
+  - Monitor and log resource usage in production
+
+- **Asynchronous Operations**:
+  - Use async/await for I/O-bound operations
+  - Consider threading for CPU-bound operations with Python's GIL constraints
+  - Use appropriate concurrency primitives (locks, semaphores) when needed
+
+### Dependency Management
+
+- **Package Manager**:
+  - Use `uv` for package management (project standard)
+  - Run `uv sync` to install dependencies
+  - Use `uv add <package>` to add new dependencies
+  - Keep `uv.lock` file committed for reproducible builds
+
+- **Version Pinning**:
+  - Pin dependency versions in `requirements.txt` for deployment
+  - Use version ranges in `pyproject.toml` for development flexibility
+  - Test with latest versions before updating
+  - Review dependency changes in PRs carefully
+
+- **Dependency Updates**:
+  - Keep dependencies up to date for security patches
+  - Test thoroughly after dependency updates
+  - Review changelogs for breaking changes
+  - Consider using `dependabot` or similar tools
+
+### CI/CD Practices
+
+- **Continuous Integration**:
+  - All code must pass CI checks before merge
+  - CI runs tests on multiple Python versions (3.9-3.14)
+  - CI validates code style, type checking, and linting
+  - CI ensures all examples run successfully
+  - CI verifies package builds correctly
+
+- **Continuous Deployment**:
+  - Deployments are automated via GitHub Actions
+  - Main branch is automatically synced to Hugging Face Spaces
+  - Deployment failures trigger alerts
+  - Rollback procedures should be documented
+
+- **Pre-commit Hooks**:
+  - Install pre-commit hooks: `pre-commit install`
+  - Hooks run automatically before commits
+  - Run manually: `pre-commit run --all-files`
+  - Fix any hook failures before committing
+
+- **Build Verification**:
+  - Package builds are verified in CI
+  - Wheel contents are checked for correctness
+  - Installation is tested in clean environments
+  - Published packages are tested after release
+
+### Code Review Guidelines
+
+- **As a Reviewer**:
+  - Review for correctness, style, and maintainability
+  - Check that tests are included and appropriate
+  - Verify documentation is updated
+  - Ensure security best practices are followed
+  - Provide constructive feedback
+
+- **As an Author**:
+  - Respond to all review comments
+  - Make changes or explain why changes aren't needed
+  - Keep PRs updated with latest main branch
+  - Mark conversations as resolved when addressed
+
+## Streamlit-Specific Guidelines
+
+- **Caching**:
+  - Use `@st.cache_data` for data processing functions
+  - Use `@st.cache_resource` for expensive model/object initialization
+  - Provide unique `key` parameters when needed
+  - Consider cache TTL for frequently changing data
+
+- **State Management**:
+  - Use `st.session_state` for multi-step interactions
+  - Initialize session state variables appropriately
+  - Clean up session state when no longer needed
+
+- **Performance**:
+  - Process large files in chunks or with progress indicators
+  - Use `st.spinner` for long-running operations
+  - Display partial results when possible
+  - Consider async operations for I/O-bound tasks
+

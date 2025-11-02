@@ -1,4 +1,7 @@
 tests/data/** linguist-vendored
 tests/data_scanned/** linguist-vendored
 docs/** linguist-vendored
+
+# Git LFS for large test data files (required for Hugging Face Spaces sync)
 *.pages.json filter=lfs diff=lfs merge=lfs -text
+tests/data/groundtruth/**/*.pages.json filter=lfs diff=lfs merge=lfs -text

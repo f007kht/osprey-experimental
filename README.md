@@ -87,6 +87,41 @@ If you encounter deployment issues on Streamlit Cloud, refer to `deployment-logs
 - **Memory requirements:** Processing large documents may require significant memory
 - **File upload limits:** Check Streamlit Cloud limits for file upload sizes
 
+## Remote Synchronization
+
+This project maintains synchronized repositories on GitHub and Hugging Face Spaces:
+
+- **GitHub Repository**: https://github.com/f007kht/osprey-experimental (source of truth)
+- **Hugging Face Space**: https://huggingface.co/spaces/f007kht/osprey-experimental (automatically synced)
+
+### Synchronization Strategy
+
+- **Single Source of Truth**: GitHub (`origin/main`) is the authoritative source for all code changes
+- **Automated Sync**: A GitHub Actions workflow (`.github/workflows/sync-to-hf.yml`) automatically syncs the `main` branch to Hugging Face Spaces on every push
+- **No Direct Edits**: Never make direct edits to the Hugging Face Space UI - all changes must flow through GitHub first
+- **Prevention of Divergence**: The automated sync ensures both remotes remain perfectly synchronized
+
+### How It Works
+
+1. All development happens on GitHub (feature branches, pull requests, merges to main)
+2. When code is pushed to the `main` branch on GitHub, the sync workflow automatically triggers
+3. The workflow force-pushes `main` to the Hugging Face Space remote, keeping them in sync
+4. Hugging Face Spaces automatically rebuilds the Docker image when changes are detected
+
+### Git LFS Requirement
+
+Large test data files (`.pages.json` files > 10MB) are tracked using Git LFS. This is required because Hugging Face Spaces has a 10MB file size limit without LFS. The `.gitattributes` file configures which files use LFS.
+
+### Manual Sync (if needed)
+
+If you need to manually sync (not recommended, as automated sync should handle this):
+
+```bash
+git push huggingface main --force
+```
+
+**Note**: Manual sync should only be done in emergencies. The automated workflow handles all normal synchronization.
+
 ## License
 
 Confidential - Osprey_Intel_LLC
