@@ -5,3 +5,6 @@ docs/** linguist-vendored
 # Git LFS for large test data files (required for Hugging Face Spaces sync)
 *.pages.json filter=lfs diff=lfs merge=lfs -text
 tests/data/groundtruth/**/*.pages.json filter=lfs diff=lfs merge=lfs -text
+
+# Explicitly exclude app.py from LFS (should never be tracked by LFS)
+app.py -filter -diff -merge

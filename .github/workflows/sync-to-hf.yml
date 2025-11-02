@@ -9,6 +9,8 @@ on:
 jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,11 +29,37 @@ jobs:
           git checkout --orphan hf-deploy-temp
           git rm -rf --cached . 2>/dev/null || true
           
-          # Add only files needed for deployment
-          git add app.py Dockerfile requirements.txt .streamlit/ README.md .gitattributes .cursorrules .github/workflows/sync-to-hf.yml
+          # Add only files needed for deployment (ignore missing files)
+          git add app.py Dockerfile requirements.txt README.md .gitattributes .cursorrules .github/workflows/sync-to-hf.yml 2>/dev/null || true
+          # Add .streamlit/ if it exists
+          if [ -d .streamlit ]; then
+            git add .streamlit/
+          fi
           
-          # Commit deployment files
-          git commit -m "chore: Sync deployment files to HF Space (excludes test data to stay within storage limits)"
+          # Verify files were added
+          if [ -z "$(git ls-files --cached)" ]; then
+            echo "Error: No files to commit"
+            exit 1
+          fi
+          
+          # Commit deployment files (allow empty commit if nothing changed but files are staged)
+          git commit -m "chore: Sync deployment files to HF Space (excludes test data to stay within storage limits)" || \
+          git commit --allow-empty -m "chore: Sync deployment files to HF Space (no changes detected)"
+
+      - name: Verify HF_TOKEN secret is configured
+        run: |
+          if [ -z "${{ secrets.HF_TOKEN }}" ]; then
+            echo "::error::HF_TOKEN secret is not configured in repository settings"
+            echo ""
+            echo "To configure:"
+            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "2. Click 'New repository secret'"
+            echo "3. Name: HF_TOKEN"
+            echo "4. Value: Your Hugging Face token (starts with 'hf_')"
+            echo "5. Click 'Add secret'"
+            exit 1
+          fi
+          echo "✅ HF_TOKEN secret is configured"
 
       - name: Add Hugging Face remote
         run: |
@@ -43,4 +71,5 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           git push --force https://huggingface:${HF_TOKEN}@huggingface.co/spaces/f007kht/osprey-experimental hf-deploy-temp:main
+          echo "✅ Successfully pushed to Hugging Face Space"
 
