@@ -46,23 +46,6 @@ jobs:
           git commit -m "chore: Sync deployment files to HF Space (excludes test data to stay within storage limits)" || \
           git commit --allow-empty -m "chore: Sync deployment files to HF Space (no changes detected)"
 
-      - name: Verify osprey-space-push secret is configured
-        if: ${{ secrets.osprey-space-push == '' }}
-        run: |
-          echo "::error::osprey-space-push secret is not configured in repository settings"
-          echo ""
-          echo "To configure:"
-          echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
-          echo "2. Click 'New repository secret'"
-          echo "3. Name: osprey-space-push"
-          echo "4. Value: Your Hugging Face token (starts with 'hf_')"
-          echo "5. Click 'Add secret'"
-          exit 1
-
-      - name: Confirm secret is ready
-        if: ${{ secrets.osprey-space-push != '' }}
-        run: echo "✅ osprey-space-push secret is configured"
-
       - name: Add Hugging Face remote
         run: |
           git remote add huggingface https://huggingface.co/spaces/f007kht/osprey-experimental || true
@@ -72,6 +55,18 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.osprey-space-push }}
         run: |
+          if [ -z "${HF_TOKEN}" ]; then
+            echo "::error::HF_TOKEN environment variable is empty. Check that osprey-space-push secret is configured."
+            echo ""
+            echo "To configure:"
+            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "2. Click 'New repository secret'"
+            echo "3. Name: osprey-space-push"
+            echo "4. Value: Your Hugging Face token (starts with 'hf_')"
+            echo "5. Click 'Add secret'"
+            exit 1
+          fi
+          echo "Pushing to Hugging Face Space..."
           git push --force https://huggingface:${HF_TOKEN}@huggingface.co/spaces/f007kht/osprey-experimental hf-deploy-temp:main
           echo "✅ Successfully pushed to Hugging Face Space"
 
