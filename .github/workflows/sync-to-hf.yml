@@ -48,18 +48,18 @@ jobs:
 
       - name: Verify HF_TOKEN secret is configured
         run: |
-          if [ -z "${{ secrets.HF_TOKEN }}" ]; then
-            echo "::error::HF_TOKEN secret is not configured in repository settings"
+          if [ -z "${{ secrets.osprey-space-push }}" ]; then
+            echo "::error::osprey-space-push secret is not configured in repository settings"
             echo ""
             echo "To configure:"
             echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
             echo "2. Click 'New repository secret'"
-            echo "3. Name: HF_TOKEN"
+            echo "3. Name: osprey-space-push"
             echo "4. Value: Your Hugging Face token (starts with 'hf_')"
             echo "5. Click 'Add secret'"
             exit 1
           fi
-          echo "✅ HF_TOKEN secret is configured"
+          echo "✅ osprey-space-push secret is configured"
 
       - name: Add Hugging Face remote
         run: |
@@ -68,7 +68,7 @@ jobs:
 
       - name: Push to Hugging Face Space
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_TOKEN: ${{ secrets.osprey-space-push }}
         run: |
           git push --force https://huggingface:${HF_TOKEN}@huggingface.co/spaces/f007kht/osprey-experimental hf-deploy-temp:main
           echo "✅ Successfully pushed to Hugging Face Space"
