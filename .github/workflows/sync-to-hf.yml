@@ -16,15 +16,22 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install Git LFS
-        run: |
-          git lfs install
-
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git lfs pull
+
+      - name: Create deployment-only branch (exclude test data for HF Space)
+        run: |
+          # Create orphan branch with only deployment files (avoids LFS storage limits)
+          git checkout --orphan hf-deploy-temp
+          git rm -rf --cached . 2>/dev/null || true
+          
+          # Add only files needed for deployment
+          git add app.py Dockerfile requirements.txt .streamlit/ README.md .gitattributes .cursorrules .github/workflows/sync-to-hf.yml
+          
+          # Commit deployment files
+          git commit -m "chore: Sync deployment files to HF Space (excludes test data to stay within storage limits)"
 
       - name: Add Hugging Face remote
         run: |
@@ -35,5 +42,5 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git push --force https://huggingface:${HF_TOKEN}@huggingface.co/spaces/f007kht/osprey-experimental main:main
+          git push --force https://huggingface:${HF_TOKEN}@huggingface.co/spaces/f007kht/osprey-experimental hf-deploy-temp:main
 
