@@ -61,6 +61,46 @@ The project was moved to Hugging Face Spaces for three primary reasons:
 
 3. **Memory Resources**: Hugging Face Spaces provides 16GB RAM (vs 1GB on Streamlit Cloud free tier), which is essential for processing large documents with Docling's ML models.
 
+### Configuring Environment Variables
+
+To enable MongoDB storage and other optional features in your Hugging Face Space deployment, you need to configure environment variables:
+
+1. **Navigate to your Space settings:**
+   - Go to https://huggingface.co/spaces/f007kht/osprey-experimental
+   - Click the **Settings** tab (gear icon in the top right)
+
+2. **Add environment variables:**
+   - Scroll to **Variables and secrets** section
+   - Click **New variable** or **New secret** (use secrets for sensitive data like connection strings)
+
+3. **Required variables for MongoDB:**
+
+   | Variable Name | Value | Description |
+   |--------------|-------|-------------|
+   | `ENABLE_MONGODB` | `true` | Enables MongoDB storage features |
+   | `MONGODB_CONNECTION_STRING` | `mongodb+srv://...` | Your MongoDB Atlas connection string (mark as secret) |
+
+4. **Optional variables:**
+
+   | Variable Name | Default | Description |
+   |--------------|---------|-------------|
+   | `EMBEDDING_MODEL` | `sentence-transformers/all-MiniLM-L6-v2` | Local embedding model for RAG |
+   | `ENABLE_DOWNLOADS` | `true` | Enable download buttons for processed documents |
+   | `USE_REMOTE_EMBEDDINGS` | `false` | Use VoyageAI instead of local embeddings |
+   | `VOYAGEAI_API_KEY` | - | Required if `USE_REMOTE_EMBEDDINGS=true` |
+
+5. **After adding variables:**
+   - Click **Save** to apply changes
+   - Restart your Space: Go to **Settings** → **Restart this Space**
+
+**Important Security Notes:**
+- Use **Secrets** (not Variables) for sensitive data like MongoDB connection strings and API keys
+- Secrets are hidden in logs but visible in Space settings UI
+- Never commit secrets to GitHub - use Hugging Face Spaces secrets instead
+
+**Verification:**
+After restarting, the sidebar should show MongoDB configuration options instead of "MongoDB features are disabled" message.
+
 ## Project Structure
 
 ```
