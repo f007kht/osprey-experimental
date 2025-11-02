@@ -7,8 +7,11 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/* \
     && TESSDATA_PATH=$(dpkg -L tesseract-ocr-eng | grep 'tessdata$' | head -n 1) \
-    && if [ -n "$TESSDATA_PATH" ] && [ "${TESSDATA_PATH: -1}" != "/" ]; then \
-        TESSDATA_PATH="$TESSDATA_PATH/"; \
+    && if [ -n "$TESSDATA_PATH" ]; then \
+        case "$TESSDATA_PATH" in \
+          */) ;; \
+          *) TESSDATA_PATH="$TESSDATA_PATH/" ;; \
+        esac \
        fi \
     && echo "$TESSDATA_PATH" > /tmp/tessdata_prefix \
     && echo "export TESSDATA_PREFIX=$TESSDATA_PATH" >> /etc/profile.d/tessdata.sh \
