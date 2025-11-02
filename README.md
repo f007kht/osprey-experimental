@@ -87,6 +87,17 @@ If you encounter deployment issues on Streamlit Cloud, refer to `deployment-logs
 - **Memory requirements:** Processing large documents may require significant memory
 - **File upload limits:** Check Streamlit Cloud limits for file upload sizes
 
+### Known Issues and Fixes
+
+**Issue: `DoclingPdfParser.load() got an unexpected keyword argument 'password'`**
+
+- **Symptoms:** Error occurs when processing PDF documents (especially password-protected ones)
+- **Cause:** Version mismatch between Docling code and installed `docling-parse` library - some versions don't support the `password` parameter in `DoclingPdfParser.load()`
+- **Fix Applied:** Modified `docling/backend/docling_parse_v4_backend.py` to handle API compatibility:
+  - Tries loading with password parameter first (for newer versions)
+  - Falls back to loading without password if TypeError occurs (since pypdfium2 already handles password protection)
+- **Status:** Fixed in commit 97f3fb0
+
 ## Remote Synchronization
 
 This project maintains synchronized repositories on GitHub and Hugging Face Spaces:

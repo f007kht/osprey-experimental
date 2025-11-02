@@ -204,9 +204,30 @@ class DoclingParseV4DocumentBackend(PdfDocumentBackend):
         with pypdfium2_lock:
             self._pdoc = pdfium.PdfDocument(self.path_or_stream, password=password)
         self.parser = DoclingPdfParser(loglevel="fatal")
-        self.dp_doc: PdfDocument = self.parser.load(
-            path_or_stream=self.path_or_stream, password=password
-        )
+        
+        # NOTE: DoclingPdfParser.load() doesn't accept 'password' parameter in some versions
+        # Since pypdfium2 already handles password-protected PDFs above, we don't need to
+        # pass password to parser.load(). The document is already decrypted by pypdfium2.
+        try:
+            # Try with password parameter first (for versions that support it)
+            self.dp_doc: PdfDocument = self.parser.load(
+                path_or_stream=self.path_or_stream, password=password
+            )
+        except TypeError as e:
+            if "unexpected keyword argument 'password'" in str(e):
+                # Installed version doesn't support password parameter
+                # This is fine - pypdfium2 already handled password protection above
+                _log.debug(
+                    "DoclingPdfParser.load() doesn't support password parameter in this version. "
+                    "Using document already decrypted by pypdfium2."
+                )
+                self.dp_doc: PdfDocument = self.parser.load(
+                    path_or_stream=self.path_or_stream
+                )
+            else:
+                # Re-raise if it's a different TypeError
+                raise
+        
         success = self.dp_doc is not None
 
         if not success:
