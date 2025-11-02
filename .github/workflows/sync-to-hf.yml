@@ -47,25 +47,21 @@ jobs:
           git commit --allow-empty -m "chore: Sync deployment files to HF Space (no changes detected)"
 
       - name: Verify osprey-space-push secret is configured
+        if: ${{ secrets.osprey-space-push == '' }}
         run: |
-          echo "Checking for osprey-space-push secret..."
-          if [ -z "${{ secrets.osprey-space-push }}" ]; then
-            echo "::error::osprey-space-push secret is not configured or not accessible"
-            echo ""
-            echo "Current repository: ${{ github.repository }}"
-            echo ""
-            echo "To configure:"
-            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
-            echo "2. Verify a secret named 'osprey-space-push' exists"
-            echo "3. If missing, click 'New repository secret'"
-            echo "4. Name: osprey-space-push (must match exactly)"
-            echo "5. Value: Your Hugging Face token (starts with 'hf_')"
-            echo "6. Click 'Add secret'"
-            exit 1
-          fi
-          echo "✅ osprey-space-push secret is configured (value length: ${#OSPREY_SECRET})"
-        env:
-          OSPREY_SECRET: ${{ secrets.osprey-space-push }}
+          echo "::error::osprey-space-push secret is not configured in repository settings"
+          echo ""
+          echo "To configure:"
+          echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+          echo "2. Click 'New repository secret'"
+          echo "3. Name: osprey-space-push"
+          echo "4. Value: Your Hugging Face token (starts with 'hf_')"
+          echo "5. Click 'Add secret'"
+          exit 1
+
+      - name: Confirm secret is ready
+        if: ${{ secrets.osprey-space-push != '' }}
+        run: echo "✅ osprey-space-push secret is configured"
 
       - name: Add Hugging Face remote
         run: |
