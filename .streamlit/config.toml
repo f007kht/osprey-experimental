@@ -9,12 +9,10 @@ maxUploadSize = 200
 # Enable file uploader
 enableCORS = false
 
-[server.fileWatcherType]
 # Use polling instead of native file watcher for better compatibility
 # This helps avoid permission issues in containerized environments
-type = "poll"
+fileWatcherType = "poll"
 
-[server.headless]
 # Headless mode for cloud deployment
 headless = true
 
