@@ -1,0 +1,116 @@
+# Streamlit Document Processor App
+#
+# What this app does:
+# - Provides a web-based interface for uploading and processing documents with Docling
+# - Displays the extracted Markdown content in an interactive Streamlit app
+#
+# Requirements
+# - Python 3.9+
+# - Install Docling: `pip install docling`
+# - Install Streamlit: `pip install streamlit`
+#
+# How to run
+# - Run from the project root: `streamlit run app.py`
+# - The app will open in your web browser at http://localhost:8501
+#
+# Notes
+# - The converter auto-detects supported formats (PDF, DOCX, HTML, PPTX, images, etc.).
+# - First run will download models, which may take several minutes.
+# - For batch processing or saving outputs to files, see `docs/examples/batch_convert.py`.
+
+import os
+import tempfile
+
+# Set environment variable to use headless OpenCV before any imports
+# This prevents libGL.so.1 errors on headless systems like Streamlit Cloud
+os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"
+
+# TESSDATA_PREFIX is now set by the Dockerfile at build time
+# The Dockerfile detects the correct tessdata path using dpkg during the build process
+# This eliminates the need for runtime detection and ensures a single source of truth
+
+import streamlit as st
+
+try:
+    from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
+    from docling.document_converter import DocumentConverter, PdfFormatOption
+except Exception as e:
+    st.error(f"Failed to import docling modules: {e}")
+    st.exception(e)
+    st.stop()
+
+# Cache the converter to avoid reinitializing on every upload
+# This prevents memory spikes from loading models multiple times
+@st.cache_resource
+def get_converter():
+    """Get or create a cached DocumentConverter instance with Tesseract OCR."""
+    # Note: Cannot use Streamlit UI elements (st.error, st.exception) inside cached functions
+    pipeline_options = PdfPipelineOptions()
+    pipeline_options.do_ocr = True
+    # Explicitly set Tesseract OCR to avoid RapidOCR fallback and permission errors
+    pipeline_options.ocr_options = TesseractOcrOptions()
+    
+    return DocumentConverter(
+        format_options={
+            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
+        }
+    )
+
+# Set up the Streamlit page title
+st.title("📄 Docling Document Processor")
+st.write("Upload a document (PDF, DOCX, PPTX, etc.) to process it with Docling.")
+
+# 1. Create the document upload button
+uploaded_file = st.file_uploader(
+    "Choose a document...",
+    type=["pdf", "docx", "pptx", "xlsx", "html", "png", "jpg", "jpeg", "tiff", "wav", "mp3"],
+)
+
+# 2. Run the docling process when a file is uploaded
+if uploaded_file is not None:
+    # Use a temporary file to store the uploaded content
+    # Docling's .convert() method works well with file paths
+    with tempfile.NamedTemporaryFile(
+        delete=False, suffix=os.path.splitext(uploaded_file.name)[1]
+    ) as tmp_file:
+        tmp_file.write(uploaded_file.getvalue())
+        tmp_file_path = tmp_file.name
+
+    st.info(f"Processing `{uploaded_file.name}`... This might take a moment.")
+
+    try:
+        # Get the cached converter (initializes once, then reuses)
+        # This prevents memory spikes from loading models multiple times
+        with st.spinner("Loading Docling (this may take a while on first run)..."):
+            converter = get_converter()
+
+        # Run the conversion process
+        with st.spinner(f"Converting `{uploaded_file.name}`..."):
+            result = converter.convert(tmp_file_path)
+
+        st.success("✅ Document processed successfully!")
+
+        # 3. Display the results
+        st.subheader("Extracted Content (Markdown)")
+
+        # Export the document's content to Markdown
+        markdown_output = result.document.export_to_markdown()
+
+        # Display the Markdown in the app.
+        # We use a text_area for long outputs, but st.markdown() also works.
+        # Unique key prevents conflicts when multiple files are processed
+        st.text_area("Markdown Output", markdown_output, height=600, key=f"output_{uploaded_file.name}")
+
+    except Exception as e:
+        st.error(f"An error occurred during processing: {e}")
+        # Show full traceback in Streamlit for debugging
+        st.exception(e)
+
+    finally:
+        # Clean up the temporary file
+        if tmp_file_path and os.path.exists(tmp_file_path):
+            try:
+                os.remove(tmp_file_path)
+            except Exception:
+                pass  # Ignore cleanup errors
