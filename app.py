@@ -19,44 +19,15 @@
 # - For batch processing or saving outputs to files, see `docs/examples/batch_convert.py`.
 
 import os
-import subprocess
 import tempfile
-import traceback
 
 # Set environment variable to use headless OpenCV before any imports
 # This prevents libGL.so.1 errors on headless systems like Streamlit Cloud
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"
 
-# Set TESSDATA_PREFIX to point to Tesseract language data directory
-# This is required for tesserocr to find language models
-if "TESSDATA_PREFIX" not in os.environ:
-    try:
-        # Try to find tessdata directory using dpkg (Debian/Ubuntu)
-        result = subprocess.run(
-            ["dpkg", "-L", "tesseract-ocr-eng"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode == 0:
-            for line in result.stdout.split("\n"):
-                if line.endswith("tessdata"):
-                    os.environ["TESSDATA_PREFIX"] = line
-                    break
-    except Exception:
-        pass
-    
-    # Fallback to common paths if detection failed
-    if "TESSDATA_PREFIX" not in os.environ:
-        common_paths = [
-            "/usr/share/tesseract-ocr/tessdata",
-            "/usr/share/tesseract-ocr/4.00/tessdata",
-            "/usr/share/tesseract-ocr/5/tessdata",
-        ]
-        for path in common_paths:
-            if os.path.exists(path):
-                os.environ["TESSDATA_PREFIX"] = path
-                break
+# TESSDATA_PREFIX is now set by the Dockerfile at build time
+# The Dockerfile detects the correct tessdata path using dpkg during the build process
+# This eliminates the need for runtime detection and ensures a single source of truth
 
 import streamlit as st
 
