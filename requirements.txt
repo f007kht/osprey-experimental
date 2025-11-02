@@ -9,4 +9,7 @@ tesserocr
 # Optional dependencies for MongoDB storage and RAG features
 # These are only needed if ENABLE_MONGODB=true
 pymongo[srv]
+# Local embeddings (default)
+sentence-transformers
+# Remote embeddings (optional, use remote embeddings in UI)
 voyageai
