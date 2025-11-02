@@ -46,9 +46,20 @@ The app is deployed on **Hugging Face Spaces**: https://huggingface.co/spaces/f0
 - Uses `requirements.txt` for dependency management
 - Configured with CPU-only PyTorch builds for cloud compatibility
 - System dependencies (Tesseract OCR, libGL) installed via Dockerfile
+- **Explicitly configured for CPU-only operation** - prevents GPU detection issues that can crash Streamlit
 
 **Previous deployment attempts on Streamlit Cloud:**
 The deployment process and troubleshooting steps for Streamlit Cloud are documented in `deployment-logs/streamlit-cloud-deployment-log.txt`. Memory limitations (1GB RAM) on Streamlit Cloud's free tier led to migration to Hugging Face Spaces.
+
+**Why Hugging Face Spaces:**
+
+The project was moved to Hugging Face Spaces for three primary reasons:
+
+1. **File Size Limitations**: Docling's required model files and dependencies exceed Streamlit Cloud's deployment specifications. Hugging Face Spaces supports Docker deployments with larger storage capacities, allowing all necessary models and dependencies to be included.
+
+2. **GPU/Compute Detection Issues**: The platform provides reliable CPU-only compute environments, and the app is explicitly configured to use CPU mode (`AcceleratorDevice.CPU`) to ensure stable operation without GPU driver dependencies or detection failures.
+
+3. **Memory Resources**: Hugging Face Spaces provides 16GB RAM (vs 1GB on Streamlit Cloud free tier), which is essential for processing large documents with Docling's ML models.
 
 ## Project Structure
 
@@ -97,6 +108,14 @@ If you encounter deployment issues on Streamlit Cloud, refer to `deployment-logs
   - Tries loading with password parameter first (for newer versions)
   - Falls back to loading without password if TypeError occurs (since pypdfium2 already handles password protection)
 - **Status:** Fixed in commit 97f3fb0
+
+**Issue: Streamlit fails to start due to GPU/compute detection issues**
+
+- **Symptoms:** Streamlit app doesn't start or crashes during initialization on Hugging Face Spaces
+- **Cause:** Docling defaults to `AcceleratorDevice.AUTO` which attempts GPU/CUDA/MPS detection, causing issues on CPU-only platforms like Hugging Face Spaces
+- **Fix Applied:** Explicitly set `pipeline_options.accelerator_options.device = AcceleratorDevice.CPU` in `app.py`
+- **Why:** This was a key reason for moving to Hugging Face Spaces - the platform provides CPU-only compute, and forcing CPU mode ensures reliable operation without GPU driver dependencies
+- **Status:** Fixed - app now explicitly uses CPU device
 
 ## Remote Synchronization
 

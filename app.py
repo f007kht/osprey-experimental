@@ -40,6 +40,7 @@ import streamlit as st
 
 try:
     from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.accelerator_options import AcceleratorDevice
     from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
     from docling.document_converter import DocumentConverter, PdfFormatOption
 except Exception as e:
@@ -77,6 +78,9 @@ def get_converter():
     pipeline_options.do_ocr = True
     # Explicitly set Tesseract OCR to avoid RapidOCR fallback and permission errors
     pipeline_options.ocr_options = TesseractOcrOptions()
+    # Force CPU device to avoid GPU/CUDA/MPS detection issues that can prevent Streamlit from starting
+    # This ensures the app works on systems without GPU or with GPU driver issues
+    pipeline_options.accelerator_options.device = AcceleratorDevice.CPU
     
     return DocumentConverter(
         format_options={

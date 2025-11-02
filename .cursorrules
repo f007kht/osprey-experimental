@@ -18,7 +18,12 @@ When troubleshooting errors related to Docling:
 
 ## Project Context
 
-This project uses Docling for document processing in a Streamlit application deployed on Hugging Face Spaces. Always refer to the official Docling documentation at https://docling-project.github.io/docling/ when encountering Docling-related errors or configuration issues.
+This project uses Docling for document processing in a Streamlit application deployed on Hugging Face Spaces. The deployment was moved from Streamlit Cloud because:
+- Required model files and dependencies exceed Streamlit Cloud's deployment specifications
+- GPU/compute detection issues required CPU-only operation
+- Memory requirements exceed Streamlit Cloud's free tier limits
+
+Always refer to the official Docling documentation at https://docling-project.github.io/docling/ when encountering Docling-related errors or configuration issues.
 
 ## Comprehensive Software Engineering Directives
 
