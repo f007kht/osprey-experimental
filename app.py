@@ -251,10 +251,12 @@ def _prepare_download_data(
         data = json.dumps(result.document.export_to_dict(), indent=2)
         filename = _get_download_filename(base_filename, "json")
     elif format_type == "txt":
+        # Note: strict_text parameter is deprecated but still functional
         data = result.document.export_to_markdown(strict_text=True)
         filename = _get_download_filename(base_filename, "txt")
     elif format_type == "doctags":
-        data = result.document.export_to_document_tokens()
+        # Use export_to_doctags() instead of deprecated export_to_document_tokens()
+        data = result.document.export_to_doctags()
         filename = _get_download_filename(base_filename, "doctags")
     else:
         raise ValueError(f"Unknown format type: {format_type}")
