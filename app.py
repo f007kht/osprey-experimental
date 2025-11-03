@@ -637,7 +637,37 @@ if uploaded_file is not None:
                             except ValueError as e:
                                 st.error(f"ERROR: Configuration error: {e}")
                             except Exception as e:
-                                st.error(f"ERROR: Error saving to MongoDB: {e}")
+                                error_msg = str(e)
+                                st.error(f"ERROR: Error saving to MongoDB: {error_msg}")
+
+                                # Provide helpful troubleshooting for common errors
+                                if "SSL" in error_msg or "TLS" in error_msg:
+                                    st.warning("**MongoDB Atlas SSL/TLS Connection Issue**")
+                                    st.info("""
+**Troubleshooting Steps:**
+
+1. **Verify Connection String Format**
+   - Use `mongodb+srv://` format (NOT `mongodb://`)
+   - Example: `mongodb+srv://<username>:<password>@cluster.xxxxx.mongodb.net/?retryWrites=true&w=majority`
+
+2. **Check MongoDB Atlas Network Access**
+   - In Atlas: Security → Network Access
+   - Add IP: `0.0.0.0/0` (allow all) or your specific IP
+   - Wait 1-2 minutes for changes to propagate
+
+3. **Verify Database User**
+   - In Atlas: Security → Database Access
+   - Ensure user has read/write permissions
+   - Check username/password are correct in connection string
+
+4. **Test Connection String**
+   - Copy connection string from Atlas: Database → Connect → Drivers
+   - Replace `<password>` with actual password
+   - Remove angle brackets `< >`
+
+If issues persist after checking above, the Hugging Face Spaces environment may need SSL certificate updates.
+                                    """)
+
                                 st.exception(e)
                                 # App continues normally - storage failure doesn't break the app
                     with col_info:
