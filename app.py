@@ -257,38 +257,26 @@ def _store_in_mongodb(
     try:
         # Connect to MongoDB with SSL/TLS configuration
         # MongoDB Atlas requires proper SSL/TLS setup
-        import ssl
         import certifi
-
-        # Create SSL context with compatibility settings for MongoDB Atlas
-        # This fixes OpenSSL 3.x compatibility issues
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-        ssl_context.check_hostname = True
-        ssl_context.verify_mode = ssl.CERT_REQUIRED
-
-        # Workaround for OpenSSL 3.0 compatibility with MongoDB Atlas
-        # Some Atlas clusters require legacy renegotiation
-        try:
-            ssl_context.options &= ~ssl.OP_NO_TLSv1_2
-            ssl_context.options &= ~ssl.OP_NO_TLSv1_3
-        except AttributeError:
-            pass  # Ignore if options not available
 
         # Parse connection string to check format
         # MongoDB Atlas requires mongodb+srv:// format
         if not mongodb_connection_string.startswith('mongodb+srv://') and not mongodb_connection_string.startswith('mongodb://'):
             raise ValueError("Invalid MongoDB connection string format. Use mongodb+srv://...")
 
+        # Configure MongoClient with proper SSL/TLS settings
+        # Use pymongo-compatible parameter names (tls, tlsCAFile - NOT ssl_context)
         client = MongoClient(
             mongodb_connection_string,
-            ssl_context=ssl_context,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            tlsAllowInvalidCertificates=False,
+            tlsAllowInvalidHostnames=False,
             serverSelectionTimeoutMS=30000,
             connectTimeoutMS=20000,
             socketTimeoutMS=20000,
             retryWrites=True,
             retryReads=True,
-            # Additional parameters for Atlas compatibility
-            tlsAllowInvalidHostnames=False,
             directConnection=False
         )
 
