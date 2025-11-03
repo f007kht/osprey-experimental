@@ -1,4 +1,4 @@
-# Streamlit Document Processor App
+﻿# Streamlit Document Processor App
 #
 # What this app does:
 # - Provides a web-based interface for uploading and processing documents with Docling
@@ -6,17 +6,17 @@
 #
 # Requirements
 # - Python 3.9+
-# - Install Docling: `pip install docling`
-# - Install Streamlit: `pip install streamlit`
+# - Install Docling: pip install docling
+# - Install Streamlit: pip install streamlit
 #
 # How to run
-# - Run from the project root: `streamlit run app.py`
+# - Run from the project root: streamlit run app.py
 # - The app will open in your web browser at http://localhost:8501
 #
 # Notes
 # - The converter auto-detects supported formats (PDF, DOCX, HTML, PPTX, images, etc.).
 # - First run will download models, which may take several minutes.
-# - For batch processing or saving outputs to files, see `docs/examples/batch_convert.py`.
+# - For batch processing or saving outputs to files, see docs/examples/batch_convert.py.
 
 import os
 import tempfile
@@ -64,22 +64,11 @@ try:
 except ImportError:
     CHUNKER_AVAILABLE = False
 
-# Local embeddings (sentence-transformers)
-try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
-
-# Remote embeddings (VoyageAI - optional)
 try:
     import voyageai
     VOYAGEAI_AVAILABLE = True
 except ImportError:
     VOYAGEAI_AVAILABLE = False
-
-# Embedding configuration
-DEFAULT_EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
 # Cache the converter to avoid reinitializing on every upload
 # This prevents memory spikes from loading models multiple times
@@ -100,14 +89,6 @@ def get_converter():
             InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
         }
     )
-
-
-@st.cache_resource
-def get_embedding_model(model_name: str = DEFAULT_EMBEDDING_MODEL):
-    """Get or create a cached embedding model instance."""
-    if not SENTENCE_TRANSFORMERS_AVAILABLE:
-        raise ImportError("sentence-transformers not available. Install with: pip install sentence-transformers")
-    return SentenceTransformer(model_name)
 
 
 def _get_download_filename(base_filename: str, extension: str) -> str:
@@ -175,49 +156,32 @@ def _chunk_document(document) -> List[Dict[str, Any]]:
     return chunk_data
 
 
-def _generate_embeddings(chunk_texts: List[str], embedding_config: Optional[Dict[str, Any]] = None) -> List[List[float]]:
+def _generate_embeddings(chunk_texts: List[str], api_key: str) -> List[List[float]]:
     """
-    Generate embeddings for chunks using local or remote models.
+    Generate embeddings for chunks using VoyageAI.
     
     Args:
         chunk_texts: List of chunk text strings
-        embedding_config: Optional dict with embedding configuration
-            - use_remote: bool (default: False for local)
-            - model_name: str (default: "sentence-transformers/all-MiniLM-L6-v2" for local)
-            - api_key: str (required if use_remote=True)
+        api_key: VoyageAI API key
     
     Returns:
         List of embedding vectors
     """
-    if embedding_config is None:
-        embedding_config = {"use_remote": False, "model_name": DEFAULT_EMBEDDING_MODEL}
+    if not VOYAGEAI_AVAILABLE:
+        raise ImportError("voyageai not available. Install with: pip install voyageai")
     
-    use_remote = embedding_config.get("use_remote", False)
-    model_name = embedding_config.get("model_name", DEFAULT_EMBEDDING_MODEL)
+    if not api_key:
+        raise ValueError("VoyageAI API key is required")
     
-    if use_remote:
-        # Use VoyageAI (remote)
-        if not VOYAGEAI_AVAILABLE:
-            raise ImportError("voyageai not available. Install with: pip install voyageai")
-        api_key = embedding_config.get("api_key")
-        if not api_key:
-            raise ValueError("VoyageAI API key is required for remote embeddings")
-        
-        vo = voyageai.Client(api_key)
-        result = vo.contextualized_embed(
-            inputs=[chunk_texts],
-            model="voyage-context-3"
-        )
-        embeddings = [emb for r in result.results for emb in r.embeddings]
-        return embeddings
-    else:
-        # Use local sentence-transformers
-        if not SENTENCE_TRANSFORMERS_AVAILABLE:
-            raise ImportError("sentence-transformers not available. Install with: pip install sentence-transformers")
-        
-        model = get_embedding_model(model_name)
-        embeddings = model.encode(chunk_texts, show_progress_bar=False)
-        return embeddings.tolist()  # Convert numpy array to list
+    vo = voyageai.Client(api_key)
+    result = vo.contextualized_embed(
+        inputs=[chunk_texts],
+        model="voyage-context-3"
+    )
+    
+    # Extract embeddings from result
+    embeddings = [emb for r in result.results for emb in r.embeddings]
+    return embeddings
 
 
 def _store_in_mongodb(
@@ -227,7 +191,7 @@ def _store_in_mongodb(
     mongodb_connection_string: str,
     database_name: str,
     collection_name: str,
-    embedding_config: Optional[Dict[str, Any]] = None
+    voyageai_api_key: str
 ) -> bool:
     """
     Store processed document in MongoDB with vector embeddings.
@@ -239,19 +203,13 @@ def _store_in_mongodb(
         mongodb_connection_string: MongoDB connection string
         database_name: Database name
         collection_name: Collection name
-        embedding_config: Optional dict with embedding configuration
-            - use_remote: bool (default: False for local)
-            - model_name: str (default: "sentence-transformers/all-MiniLM-L6-v2")
-            - api_key: str (required if use_remote=True)
+        voyageai_api_key: VoyageAI API key for embeddings
     
     Returns:
         True if successful, False otherwise
     """
     if not PYMONGO_AVAILABLE:
         return False
-    
-    if embedding_config is None:
-        embedding_config = {"use_remote": False, "model_name": DEFAULT_EMBEDDING_MODEL}
     
     try:
         # Connect to MongoDB
@@ -264,11 +222,7 @@ def _store_in_mongodb(
         chunk_texts = [chunk["text"] for chunk in chunks_data]
         
         # Generate embeddings
-        embeddings = _generate_embeddings(chunk_texts, embedding_config)
-        
-        # Determine embedding dimensions and model name
-        embedding_dim = len(embeddings[0]) if embeddings else 0
-        model_name = embedding_config.get("model_name", DEFAULT_EMBEDDING_MODEL)
+        embeddings = _generate_embeddings(chunk_texts, voyageai_api_key)
         
         # Combine chunks with embeddings
         chunks_with_embeddings = []
@@ -291,9 +245,8 @@ def _store_in_mongodb(
             "chunks": chunks_with_embeddings,
             "metadata": {
                 "total_chunks": len(chunks_with_embeddings),
-                "embedding_model": model_name,
-                "embedding_dimensions": embedding_dim,
-                "use_remote": embedding_config.get("use_remote", False)
+                "embedding_model": "voyage-context-3",
+                "embedding_dimensions": len(embeddings[0]) if embeddings else 0
             }
         }
         
@@ -310,7 +263,7 @@ def _store_in_mongodb(
                     "fields": [{
                         "type": "vector",
                         "path": "chunks.embedding",
-                        "numDimensions": embedding_dim,  # Dynamic based on model
+                        "numDimensions": 1024,  # voyage-context-3 dimensions
                         "similarity": "dotProduct"
                     }]
                 },
@@ -346,22 +299,14 @@ if "mongodb_collection" not in st.session_state:
     st.session_state.mongodb_collection = "documents"
 if "voyageai_api_key" not in st.session_state:
     st.session_state.voyageai_api_key = ""
-if "use_remote_embeddings" not in st.session_state:
-    st.session_state.use_remote_embeddings = False
-if "embedding_model_name" not in st.session_state:
-    st.session_state.embedding_model_name = DEFAULT_EMBEDDING_MODEL
 
 # Sidebar configuration
 with st.sidebar:
-    st.header("Configuration")
-    
-    # Show info if MongoDB is disabled
-    if not ENABLE_MONGODB:
-        st.info("MongoDB features are disabled. Set ENABLE_MONGODB=true to enable.")
+    st.header("âš™ï¸ Configuration")
     
     # MongoDB Configuration (only if enabled)
     if ENABLE_MONGODB:
-        st.subheader("MongoDB Storage")
+        st.subheader("ðŸ“Š MongoDB Storage")
         mongodb_enabled = st.checkbox(
             "Enable MongoDB Storage",
             value=True,
@@ -391,45 +336,23 @@ with st.sidebar:
         )
         
         st.divider()
-        st.subheader("Embedding Configuration")
-        
-        use_remote_embeddings = st.checkbox(
-            "Use Remote Embeddings (VoyageAI)",
-            value=os.getenv("USE_REMOTE_EMBEDDINGS", "false").lower() == "true",
-            help="Use VoyageAI for embeddings (requires API key). Unchecked = local models.",
+        st.subheader("ðŸ”‘ VoyageAI Configuration")
+        voyageai_api_key = st.text_input(
+            "VoyageAI API Key",
+            value=os.getenv("VOYAGEAI_API_KEY", ""),
+            type="password",
+            help="API key for VoyageAI embeddings",
             disabled=not mongodb_enabled
         )
         
-        if use_remote_embeddings:
-            voyageai_api_key = st.text_input(
-                "VoyageAI API Key",
-                value=os.getenv("VOYAGEAI_API_KEY", ""),
-                type="password",
-                help="API key for VoyageAI embeddings (required if using remote)",
-                disabled=not mongodb_enabled
-            )
-            embedding_model_name = "voyage-context-3"  # Fixed for VoyageAI
-        else:
-            voyageai_api_key = ""
-            embedding_model_name = st.text_input(
-                "Local Embedding Model",
-                value=os.getenv("EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL),
-                help="HuggingFace model name for local embeddings (e.g., sentence-transformers/all-MiniLM-L6-v2)",
-                disabled=not mongodb_enabled
-            )
-        
-        if mongodb_enabled and not mongodb_connection_string:
-            st.warning("MongoDB connection string is required for storage.")
-        if mongodb_enabled and use_remote_embeddings and not voyageai_api_key:
-            st.warning("VoyageAI API key is required when using remote embeddings.")
+        if mongodb_enabled and (not mongodb_connection_string or not voyageai_api_key):
+            st.warning("âš ï¸ MongoDB connection string and VoyageAI API key are required for storage.")
     else:
         mongodb_enabled = False
         mongodb_connection_string = ""
         mongodb_database = "docling_db"
         mongodb_collection = "documents"
         voyageai_api_key = ""
-        use_remote_embeddings = False
-        embedding_model_name = DEFAULT_EMBEDDING_MODEL
     
     # Store in session state for use in processing
     st.session_state.mongodb_enabled = mongodb_enabled if ENABLE_MONGODB else False
@@ -437,11 +360,9 @@ with st.sidebar:
     st.session_state.mongodb_database = mongodb_database
     st.session_state.mongodb_collection = mongodb_collection
     st.session_state.voyageai_api_key = voyageai_api_key
-    st.session_state.use_remote_embeddings = use_remote_embeddings if ENABLE_MONGODB else False
-    st.session_state.embedding_model_name = embedding_model_name if ENABLE_MONGODB else DEFAULT_EMBEDDING_MODEL
 
 # Set up the Streamlit page title
-st.title("Docling Document Processor")
+st.title("ðŸ“„ Docling Document Processor")
 st.write("Upload a document (PDF, DOCX, PPTX, etc.) to process it with Docling.")
 
 # 1. Create the document upload button
@@ -460,7 +381,7 @@ if uploaded_file is not None:
         tmp_file.write(uploaded_file.getvalue())
         tmp_file_path = tmp_file.name
 
-    st.info(f"Processing `{uploaded_file.name}`... This might take a moment.")
+    st.info(f"Processing {uploaded_file.name}... This might take a moment.")
 
     try:
         # Get the cached converter (initializes once, then reuses)
@@ -469,10 +390,10 @@ if uploaded_file is not None:
             converter = get_converter()
 
         # Run the conversion process
-        with st.spinner(f"Converting `{uploaded_file.name}`..."):
+        with st.spinner(f"Converting {uploaded_file.name}..."):
             result = converter.convert(tmp_file_path)
 
-        st.success("Document processed successfully!")
+        st.success("âœ… Document processed successfully!")
 
         # 3. Display the results
         st.subheader("Extracted Content (Markdown)")
@@ -487,7 +408,7 @@ if uploaded_file is not None:
 
         # 4. Download functionality - enabled by default
         st.divider()
-        st.subheader("Download Processed Document")
+        st.subheader("ðŸ“¥ Download Processed Document")
         
         if ENABLE_DOWNLOADS:
             st.write("Download the processed document in various formats:")
@@ -501,7 +422,7 @@ if uploaded_file is not None:
                 with col1:
                     md_data, md_filename = _prepare_download_data(result, "markdown", base_filename)
                     st.download_button(
-                        label="Download Markdown",
+                        label="ðŸ“„ Download Markdown",
                         data=md_data,
                         file_name=md_filename,
                         mime="text/markdown",
@@ -513,7 +434,7 @@ if uploaded_file is not None:
                 with col2:
                     json_data, json_filename = _prepare_download_data(result, "json", base_filename)
                     st.download_button(
-                        label="Download JSON",
+                        label="ðŸ“‹ Download JSON",
                         data=json_data,
                         file_name=json_filename,
                         mime="application/json",
@@ -525,7 +446,7 @@ if uploaded_file is not None:
                 with col3:
                     txt_data, txt_filename = _prepare_download_data(result, "txt", base_filename)
                     st.download_button(
-                        label="Download Text",
+                        label="ðŸ“ Download Text",
                         data=txt_data,
                         file_name=txt_filename,
                         mime="text/plain",
@@ -537,7 +458,7 @@ if uploaded_file is not None:
                 with col4:
                     doctags_data, doctags_filename = _prepare_download_data(result, "doctags", base_filename)
                     st.download_button(
-                        label="Download Doctags",
+                        label="ðŸ·ï¸ Download Doctags",
                         data=doctags_data,
                         file_name=doctags_filename,
                         mime="text/plain",
@@ -545,39 +466,28 @@ if uploaded_file is not None:
                         use_container_width=True
                     )
             except Exception as e:
-                st.error(f"Download feature unavailable: {e}")
+                st.error(f"âŒ Download feature unavailable: {e}")
                 st.exception(e)
                 # App continues normally - download failure doesn't break the app
         else:
-            st.warning("Downloads are disabled in this deployment.")
-            st.info("To enable downloads, set environment variable `ENABLE_DOWNLOADS=true`")
+            st.warning("âš ï¸ Downloads are disabled in this deployment.")
+            st.info("ðŸ’¡ To enable downloads, set environment variable ENABLE_DOWNLOADS=true")
 
         # 5. MongoDB Storage (if enabled)
         st.divider()
-        st.subheader("Database Storage")
+        st.subheader("ðŸ’¾ Database Storage")
         
         if ENABLE_MONGODB:
             if st.session_state.get("mongodb_enabled", False):
                 # Check if MongoDB is properly configured
-                use_remote = st.session_state.get("use_remote_embeddings", False)
-                has_api_key = bool(st.session_state.get("voyageai_api_key", ""))
-                is_configured = st.session_state.mongodb_connection_string and (
-                    (use_remote and has_api_key) or (not use_remote)
-                )
-                
-                if is_configured:
+                if (st.session_state.mongodb_connection_string and 
+                    st.session_state.voyageai_api_key):
+                    
                     col_save, col_info = st.columns([1, 2])
                     with col_save:
-                        if st.button("Save to MongoDB", key=f"save_mongodb_{uploaded_file.name}", use_container_width=True):
+                        if st.button("ðŸ’¾ Save to MongoDB", key=f"save_mongodb_{uploaded_file.name}", use_container_width=True):
                             try:
                                 with st.spinner("Saving document to MongoDB with embeddings..."):
-                                    embedding_config = {
-                                        "use_remote": st.session_state.use_remote_embeddings,
-                                        "model_name": st.session_state.embedding_model_name
-                                    }
-                                    if st.session_state.use_remote_embeddings:
-                                        embedding_config["api_key"] = st.session_state.voyageai_api_key
-                                    
                                     success = _store_in_mongodb(
                                         document=result.document,
                                         original_filename=uploaded_file.name,
@@ -585,42 +495,36 @@ if uploaded_file is not None:
                                         mongodb_connection_string=st.session_state.mongodb_connection_string,
                                         database_name=st.session_state.mongodb_database,
                                         collection_name=st.session_state.mongodb_collection,
-                                        embedding_config=embedding_config
+                                        voyageai_api_key=st.session_state.voyageai_api_key
                                     )
                                     
                                     if success:
-                                        st.success("Document saved to MongoDB successfully!")
-                                        st.info("The vector search index is being created automatically. It may take a few minutes to be ready for queries.")
+                                        st.success("âœ… Document saved to MongoDB successfully!")
+                                        st.info("ðŸ’¡ The vector search index is being created automatically. It may take a few minutes to be ready for queries.")
                                     else:
-                                        st.error("Failed to save document to MongoDB. Check error messages above.")
+                                        st.error("âŒ Failed to save document to MongoDB. Check error messages above.")
                             except ImportError as e:
-                                st.error(f"Missing dependency: {e}")
-                                if st.session_state.use_remote_embeddings:
-                                    st.info("Install MongoDB dependencies with: pip install pymongo[srv] voyageai")
-                                else:
-                                    st.info("Install MongoDB dependencies with: pip install pymongo[srv] sentence-transformers")
+                                st.error(f"âŒ Missing dependency: {e}")
+                                st.info("ðŸ’¡ Install MongoDB dependencies with: pip install pymongo[srv] voyageai")
                             except ValueError as e:
-                                st.error(f"Configuration error: {e}")
+                                st.error(f"âŒ Configuration error: {e}")
                             except Exception as e:
-                                st.error(f"Error saving to MongoDB: {e}")
+                                st.error(f"âŒ Error saving to MongoDB: {e}")
                                 st.exception(e)
                                 # App continues normally - storage failure doesn't break the app
                     with col_info:
-                        st.info("Stored documents include full markdown, JSON, and vector embeddings for RAG search.")
+                        st.info("ðŸ’¡ Stored documents include full markdown, JSON, and vector embeddings for RAG search.")
                 else:
-                    st.warning("MongoDB storage is enabled but not configured.")
-                    if use_remote:
-                        st.info("Configure MongoDB connection and VoyageAI API key in the sidebar (Configuration) to enable storage.")
-                    else:
-                        st.info("Configure MongoDB connection in the sidebar (Configuration) to enable storage.")
+                    st.warning("âš ï¸ MongoDB storage is enabled but not configured.")
+                    st.info("â„¹ï¸ Configure MongoDB connection and VoyageAI API key in the sidebar (âš™ï¸ Configuration) to enable storage.")
             else:
-                st.info("MongoDB storage is available but not enabled.")
-                st.info("Enable it in the sidebar under 'Configuration' -> 'MongoDB Storage'")
+                st.info("â„¹ï¸ MongoDB storage is available but not enabled.")
+                st.info("ðŸ’¡ Enable it in the sidebar under 'âš™ï¸ Configuration' â†’ 'ðŸ“Š MongoDB Storage'")
                 if not PYMONGO_AVAILABLE:
-                    st.warning("MongoDB dependencies not installed. Install with: `pip install pymongo[srv] sentence-transformers`")
+                    st.warning("âš ï¸ MongoDB dependencies not installed. Install with: pip install pymongo[srv] voyageai")
         else:
-            st.info("MongoDB storage feature is not enabled in this deployment.")
-            st.info("To enable: Set environment variable `ENABLE_MONGODB=true` and install dependencies: `pymongo[srv] sentence-transformers`")
+            st.info("â„¹ï¸ MongoDB storage feature is not enabled in this deployment.")
+            st.info("ðŸ’¡ To enable: Set environment variable ENABLE_MONGODB=true and install dependencies: pymongo[srv] voyageai")
 
     except Exception as e:
         st.error(f"An error occurred during processing: {e}")
