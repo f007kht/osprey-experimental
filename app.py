@@ -85,17 +85,46 @@ DEFAULT_EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/al
 # Cache the converter to avoid reinitializing on every upload
 # This prevents memory spikes from loading models multiple times
 @st.cache_resource
-def get_converter():
-    """Get or create a cached DocumentConverter instance with Tesseract OCR."""
+def get_converter(
+    enable_formula_enrichment: bool = False,
+    enable_table_structure: bool = True,
+    enable_code_enrichment: bool = False,
+    enable_picture_classification: bool = False
+):
+    """
+    Get or create a cached DocumentConverter instance with configurable options.
+
+    Args:
+        enable_formula_enrichment: Extract LaTeX representation of formulas
+        enable_table_structure: Enable enhanced table structure extraction
+        enable_code_enrichment: Enable code block language detection
+        enable_picture_classification: Classify picture types (charts, diagrams, etc.)
+
+    Returns:
+        DocumentConverter instance configured with specified options
+    """
     # Note: Cannot use Streamlit UI elements (st.error, st.exception) inside cached functions
     pipeline_options = PdfPipelineOptions()
     pipeline_options.do_ocr = True
+
     # Explicitly set Tesseract OCR to avoid RapidOCR fallback and permission errors
     pipeline_options.ocr_options = TesseractOcrOptions()
+
     # Force CPU device to avoid GPU/CUDA/MPS detection issues that can prevent Streamlit from starting
     # This ensures the app works on systems without GPU or with GPU driver issues
     pipeline_options.accelerator_options.device = AcceleratorDevice.CPU
-    
+
+    # Enable enrichment features
+    pipeline_options.do_formula_enrichment = enable_formula_enrichment
+    pipeline_options.do_table_structure = enable_table_structure
+    pipeline_options.do_code_enrichment = enable_code_enrichment
+    pipeline_options.do_picture_classification = enable_picture_classification
+
+    # Generate picture images if classification is enabled
+    if enable_picture_classification:
+        pipeline_options.generate_picture_images = True
+        pipeline_options.images_scale = 2
+
     return DocumentConverter(
         format_options={
             InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
@@ -117,21 +146,107 @@ def _get_download_filename(base_filename: str, extension: str) -> str:
     return f"{name_without_ext}.{extension}"
 
 
-def _prepare_download_data(result, format_type: str, base_filename: str = "document") -> tuple[str, str]:
+def _normalize_text(text: str, fix_spacing: bool = True, fix_ligatures: bool = True, filter_ocr_artifacts: bool = True) -> str:
+    """
+    Normalize text by fixing common OCR and formatting issues.
+
+    Args:
+        text: Input text to normalize
+        fix_spacing: Fix spacing issues (multiple spaces, line breaks)
+        fix_ligatures: Replace common ligatures with standard characters
+        filter_ocr_artifacts: Remove OCR artifacts and junk characters
+
+    Returns:
+        Normalized text
+    """
+    import re
+
+    if not text:
+        return text
+
+    # Fix ligatures (common in PDFs)
+    if fix_ligatures:
+        ligature_map = {
+            'ﬁ': 'fi',
+            'ﬂ': 'fl',
+            'ﬀ': 'ff',
+            'ﬃ': 'ffi',
+            'ﬄ': 'ffl',
+            'ﬆ': 'st',
+            'Ĳ': 'IJ',
+            'ĳ': 'ij',
+            'Œ': 'OE',
+            'œ': 'oe',
+            'Æ': 'AE',
+            'æ': 'ae',
+        }
+        for ligature, replacement in ligature_map.items():
+            text = text.replace(ligature, replacement)
+
+    # Fix spacing issues
+    if fix_spacing:
+        # Normalize multiple spaces to single space
+        text = re.sub(r' +', ' ', text)
+        # Normalize multiple newlines (keep max 2)
+        text = re.sub(r'\n\n\n+', '\n\n', text)
+        # Remove trailing whitespace from each line
+        text = re.sub(r' +\n', '\n', text)
+        # Remove leading/trailing whitespace
+        text = text.strip()
+
+    # Filter OCR artifacts
+    if filter_ocr_artifacts:
+        # Remove standalone punctuation artifacts (common in figure/table OCR)
+        # Pattern: lines with only punctuation, numbers, or very short junk
+        lines = text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            stripped = line.strip()
+            # Skip lines that are only punctuation/symbols (likely OCR noise)
+            if stripped and not re.match(r'^[.,;:!?\-_=\+\*#@\$%\^&\(\)\[\]\{\}]+$', stripped):
+                # Skip lines with excessive special characters (>50% of line)
+                if len(stripped) > 2:
+                    special_chars = len(re.findall(r'[^a-zA-Z0-9\s]', stripped))
+                    if special_chars / len(stripped) < 0.5:
+                        cleaned_lines.append(line)
+                else:
+                    cleaned_lines.append(line)
+        text = '\n'.join(cleaned_lines)
+
+    return text
+
+
+def _prepare_download_data(
+    result,
+    format_type: str,
+    base_filename: str = "document",
+    normalize_text: bool = False,
+    fix_spacing: bool = True,
+    fix_ligatures: bool = True,
+    filter_ocr_artifacts: bool = False
+) -> tuple[str, str]:
     """
     Prepare data for download in the specified format.
-    
+
     Args:
         result: ConversionResult from Docling
-        format_type: One of 'markdown', 'json', 'txt', 'doctags'
+        format_type: One of 'markdown', 'json', 'txt', 'doctags', 'html'
         base_filename: Base filename to use for download (default: "document")
-    
+        normalize_text: Apply text normalization (spacing, ligatures, OCR artifacts)
+        fix_spacing: Fix spacing issues
+        fix_ligatures: Replace ligatures
+        filter_ocr_artifacts: Remove OCR artifacts
+
     Returns:
         tuple of (data_string, filename)
     """
     if format_type == "markdown":
         data = result.document.export_to_markdown()
         filename = _get_download_filename(base_filename, "md")
+    elif format_type == "html":
+        # HTML export includes MathML for formulas if formula enrichment is enabled
+        data = result.document.export_to_html()
+        filename = _get_download_filename(base_filename, "html")
     elif format_type == "json":
         data = json.dumps(result.document.export_to_dict(), indent=2)
         filename = _get_download_filename(base_filename, "json")
@@ -143,7 +258,16 @@ def _prepare_download_data(result, format_type: str, base_filename: str = "docum
         filename = _get_download_filename(base_filename, "doctags")
     else:
         raise ValueError(f"Unknown format type: {format_type}")
-    
+
+    # Apply text normalization if requested (not for JSON format)
+    if normalize_text and format_type != "json":
+        data = _normalize_text(
+            data,
+            fix_spacing=fix_spacing,
+            fix_ligatures=fix_ligatures,
+            filter_ocr_artifacts=filter_ocr_artifacts
+        )
+
     return data, filename
 
 
@@ -506,7 +630,68 @@ with st.sidebar:
         voyageai_api_key = ""
         use_remote_embeddings = False
         embedding_model_name = DEFAULT_EMBEDDING_MODEL
-    
+
+    # Document Processing Options
+    st.divider()
+    st.subheader("Document Processing Options")
+
+    enable_formula_enrichment = st.checkbox(
+        "Extract Formulas (LaTeX)",
+        value=False,
+        help="Extract LaTeX representation of mathematical formulas. Increases processing time."
+    )
+
+    enable_table_structure = st.checkbox(
+        "Enhanced Table Structure",
+        value=True,
+        help="Extract detailed table structure with cells, rows, and columns."
+    )
+
+    enable_code_enrichment = st.checkbox(
+        "Code Language Detection",
+        value=False,
+        help="Detect programming language in code blocks. Increases processing time."
+    )
+
+    enable_picture_classification = st.checkbox(
+        "Picture Classification",
+        value=False,
+        help="Classify picture types (charts, diagrams, logos, etc.). Increases processing time."
+    )
+
+    # Text Normalization Options
+    st.divider()
+    st.subheader("Text Normalization")
+
+    apply_text_normalization = st.checkbox(
+        "Apply Text Normalization",
+        value=False,
+        help="Fix spacing, ligatures, and OCR artifacts in output text."
+    )
+
+    if apply_text_normalization:
+        fix_spacing = st.checkbox(
+            "Fix Spacing Issues",
+            value=True,
+            help="Remove extra spaces and normalize line breaks."
+        )
+
+        fix_ligatures = st.checkbox(
+            "Replace Ligatures",
+            value=True,
+            help="Replace ligatures (ﬁ, ﬂ, etc.) with standard characters (fi, fl)."
+        )
+
+        filter_ocr_artifacts = st.checkbox(
+            "Filter OCR Artifacts",
+            value=True,
+            help="Remove junk characters and punctuation-only lines from OCR."
+        )
+    else:
+        fix_spacing = True
+        fix_ligatures = True
+        filter_ocr_artifacts = False
+
     # Store in session state for use in processing
     st.session_state.mongodb_enabled = mongodb_enabled if ENABLE_MONGODB else False
     st.session_state.mongodb_connection_string = mongodb_connection_string
@@ -515,6 +700,14 @@ with st.sidebar:
     st.session_state.voyageai_api_key = voyageai_api_key
     st.session_state.use_remote_embeddings = use_remote_embeddings if ENABLE_MONGODB else False
     st.session_state.embedding_model_name = embedding_model_name if ENABLE_MONGODB else DEFAULT_EMBEDDING_MODEL
+    st.session_state.enable_formula_enrichment = enable_formula_enrichment
+    st.session_state.enable_table_structure = enable_table_structure
+    st.session_state.enable_code_enrichment = enable_code_enrichment
+    st.session_state.enable_picture_classification = enable_picture_classification
+    st.session_state.apply_text_normalization = apply_text_normalization
+    st.session_state.fix_spacing = fix_spacing
+    st.session_state.fix_ligatures = fix_ligatures
+    st.session_state.filter_ocr_artifacts = filter_ocr_artifacts
 
 # Set up the Streamlit page title
 st.title("Docling Document Processor")
@@ -541,8 +734,14 @@ if uploaded_file is not None:
     try:
         # Get the cached converter (initializes once, then reuses)
         # This prevents memory spikes from loading models multiple times
+        # Pass processing options from session state
         with st.spinner("Loading Docling (this may take a while on first run)..."):
-            converter = get_converter()
+            converter = get_converter(
+                enable_formula_enrichment=st.session_state.get("enable_formula_enrichment", False),
+                enable_table_structure=st.session_state.get("enable_table_structure", True),
+                enable_code_enrichment=st.session_state.get("enable_code_enrichment", False),
+                enable_picture_classification=st.session_state.get("enable_picture_classification", False)
+            )
 
         # Run the conversion process
         with st.spinner(f"Converting `{uploaded_file.name}`..."):
@@ -567,15 +766,27 @@ if uploaded_file is not None:
         
         if ENABLE_DOWNLOADS:
             st.write("Download the processed document in various formats:")
-            
-            col1, col2, col3, col4 = st.columns(4)
-            
+
+            # Get text normalization options from session state
+            apply_normalization = st.session_state.get("apply_text_normalization", False)
+            fix_spacing = st.session_state.get("fix_spacing", True)
+            fix_ligatures = st.session_state.get("fix_ligatures", True)
+            filter_ocr = st.session_state.get("filter_ocr_artifacts", False)
+
+            col1, col2, col3, col4, col5 = st.columns(5)
+
             try:
                 base_filename = os.path.splitext(uploaded_file.name)[0] if uploaded_file.name else "document"
-                
+
                 # Markdown download
                 with col1:
-                    md_data, md_filename = _prepare_download_data(result, "markdown", base_filename)
+                    md_data, md_filename = _prepare_download_data(
+                        result, "markdown", base_filename,
+                        normalize_text=apply_normalization,
+                        fix_spacing=fix_spacing,
+                        fix_ligatures=fix_ligatures,
+                        filter_ocr_artifacts=filter_ocr
+                    )
                     st.download_button(
                         label="Download Markdown",
                         data=md_data,
@@ -584,34 +795,64 @@ if uploaded_file is not None:
                         key=f"download_md_{uploaded_file.name}",
                         use_container_width=True
                     )
-                
-                # JSON download
+
+                # HTML download (includes MathML for formulas)
                 with col2:
+                    html_data, html_filename = _prepare_download_data(
+                        result, "html", base_filename,
+                        normalize_text=apply_normalization,
+                        fix_spacing=fix_spacing,
+                        fix_ligatures=fix_ligatures,
+                        filter_ocr_artifacts=filter_ocr
+                    )
+                    st.download_button(
+                        label="Download HTML",
+                        data=html_data,
+                        file_name=html_filename,
+                        mime="text/html",
+                        key=f"download_html_{uploaded_file.name}",
+                        use_container_width=True
+                    )
+
+                # JSON download
+                with col3:
                     json_data, json_filename = _prepare_download_data(result, "json", base_filename)
                     st.download_button(
-                        label="📋 Download JSON",
+                        label="Download JSON",
                         data=json_data,
                         file_name=json_filename,
                         mime="application/json",
                         key=f"download_json_{uploaded_file.name}",
                         use_container_width=True
                     )
-                
+
                 # Plain text download
-                with col3:
-                    txt_data, txt_filename = _prepare_download_data(result, "txt", base_filename)
+                with col4:
+                    txt_data, txt_filename = _prepare_download_data(
+                        result, "txt", base_filename,
+                        normalize_text=apply_normalization,
+                        fix_spacing=fix_spacing,
+                        fix_ligatures=fix_ligatures,
+                        filter_ocr_artifacts=filter_ocr
+                    )
                     st.download_button(
-                        label="📝 Download Text",
+                        label="Download Text",
                         data=txt_data,
                         file_name=txt_filename,
                         mime="text/plain",
                         key=f"download_txt_{uploaded_file.name}",
                         use_container_width=True
                     )
-                
+
                 # Doctags download
-                with col4:
-                    doctags_data, doctags_filename = _prepare_download_data(result, "doctags", base_filename)
+                with col5:
+                    doctags_data, doctags_filename = _prepare_download_data(
+                        result, "doctags", base_filename,
+                        normalize_text=apply_normalization,
+                        fix_spacing=fix_spacing,
+                        fix_ligatures=fix_ligatures,
+                        filter_ocr_artifacts=filter_ocr
+                    )
                     st.download_button(
                         label="Download Doctags",
                         data=doctags_data,
