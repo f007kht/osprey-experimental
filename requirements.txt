@@ -9,6 +9,7 @@ tesserocr
 # Optional dependencies for MongoDB storage and RAG features
 # These are only needed if ENABLE_MONGODB=true
 pymongo[srv]
+certifi  # Required for MongoDB Atlas SSL/TLS connections
 # Local embeddings (default)
 sentence-transformers
 # Remote embeddings (optional, use remote embeddings in UI)

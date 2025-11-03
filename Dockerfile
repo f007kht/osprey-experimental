@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     tesseract-ocr \
     tesseract-ocr-eng \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && TESSDATA_PATH=$(dpkg -L tesseract-ocr-eng | grep 'tessdata$' | head -n 1) \
     && if [ -n "$TESSDATA_PATH" ]; then \

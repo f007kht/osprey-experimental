@@ -255,8 +255,19 @@ def _store_in_mongodb(
         embedding_config = {"use_remote": False, "model_name": DEFAULT_EMBEDDING_MODEL}
     
     try:
-        # Connect to MongoDB
-        client = MongoClient(mongodb_connection_string)
+        # Connect to MongoDB with SSL/TLS configuration
+        # MongoDB Atlas requires proper SSL/TLS setup
+        import ssl
+        import certifi
+
+        client = MongoClient(
+            mongodb_connection_string,
+            tls=True,
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=30000,
+            connectTimeoutMS=20000,
+            socketTimeoutMS=20000
+        )
         db = client[database_name]
         collection = db[collection_name]
         
