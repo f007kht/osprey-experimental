@@ -629,31 +629,42 @@ if uploaded_file is not None:
                                 st.error(f"ERROR: Error saving to MongoDB: {error_msg}")
 
                                 # Provide helpful troubleshooting for common errors
-                                if "SSL" in error_msg or "TLS" in error_msg:
+                                if "SSL" in error_msg or "TLS" in error_msg or "TLSV1_ALERT_INTERNAL_ERROR" in error_msg:
                                     st.warning("**MongoDB Atlas SSL/TLS Connection Issue**")
                                     st.info("""
-**Troubleshooting Steps:**
+**CRITICAL: The 'TLSV1_ALERT_INTERNAL_ERROR' is often MISLEADING!**
 
-1. **Verify Connection String Format**
+This error usually means your IP address is NOT whitelisted in MongoDB Atlas, despite appearing as an SSL error.
+
+**PRIMARY SOLUTION (Most Common Cause):**
+
+1. **Check MongoDB Atlas Network Access (IP Whitelisting)**
+   - Go to MongoDB Atlas Dashboard
+   - Navigate to: Security → Network Access
+   - Click "Add IP Address"
+   - Add: `0.0.0.0/0` (allow all IPs)
+   - **CRITICAL for Hugging Face Spaces**: You MUST use `0.0.0.0/0` because Spaces uses dynamic IPs
+   - Wait 1-2 minutes for changes to propagate
+   - Try connecting again
+
+**If IP is already whitelisted (0.0.0.0/0), check these:**
+
+2. **Verify Connection String Format**
    - Use `mongodb+srv://` format (NOT `mongodb://`)
    - Example: `mongodb+srv://<username>:<password>@cluster.xxxxx.mongodb.net/?retryWrites=true&w=majority`
 
-2. **Check MongoDB Atlas Network Access**
-   - In Atlas: Security → Network Access
-   - Add IP: `0.0.0.0/0` (allow all) or your specific IP
-   - Wait 1-2 minutes for changes to propagate
-
-3. **Verify Database User**
+3. **Verify Database User Permissions**
    - In Atlas: Security → Database Access
-   - Ensure user has read/write permissions
-   - Check username/password are correct in connection string
+   - Ensure user has "Atlas admin" or "Read and write to any database" role
+   - Check username/password are correct in connection string (no special characters unescaped)
 
 4. **Test Connection String**
-   - Copy connection string from Atlas: Database → Connect → Drivers
-   - Replace `<password>` with actual password
-   - Remove angle brackets `< >`
+   - Copy connection string from Atlas: Database → Connect → Drivers → Python
+   - Replace `<password>` with actual password (remove `<` `>` brackets)
+   - If password has special characters, URL-encode them
 
-If issues persist after checking above, the Hugging Face Spaces environment may need SSL certificate updates.
+**Technical Note:**
+Hugging Face Spaces IP addresses change with each deployment. MongoDB Atlas blocks non-whitelisted IPs BEFORE SSL negotiation completes, causing this misleading SSL error.
                                     """)
 
                                 st.exception(e)
