@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-eng \
     ca-certificates \
+    libssl-dev \
+    openssl \
     && rm -rf /var/lib/apt/lists/* \
     && TESSDATA_PATH=$(dpkg -L tesseract-ocr-eng | grep 'tessdata$' | head -n 1) \
     && if [ -n "$TESSDATA_PATH" ]; then \
