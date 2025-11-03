@@ -880,30 +880,31 @@ if uploaded_file is not None:
                 # Check if MongoDB is properly configured
                 use_remote = st.session_state.get("use_remote_embeddings", False)
                 has_api_key = bool(st.session_state.get("voyageai_api_key", ""))
-                is_configured = st.session_state.mongodb_connection_string and (
+                has_connection_string = bool(st.session_state.get("mongodb_connection_string", ""))
+                is_configured = has_connection_string and (
                     (use_remote and has_api_key) or (not use_remote)
                 )
-                
+
                 if is_configured:
                     col_save, col_info = st.columns([1, 2])
                     with col_save:
-                        if st.button("Save to MongoDB", key=f"save_mongodb_{uploaded_file.name}", use_container_width=True):
+                        if st.button("Save to MongoDB", key=f"save_mongodb_{uploaded_file.name}", type="primary", use_container_width=True):
                             try:
                                 with st.spinner("Saving document to MongoDB with embeddings..."):
                                     embedding_config = {
-                                        "use_remote": st.session_state.use_remote_embeddings,
-                                        "model_name": st.session_state.embedding_model_name
+                                        "use_remote": st.session_state.get("use_remote_embeddings", False),
+                                        "model_name": st.session_state.get("embedding_model_name", DEFAULT_EMBEDDING_MODEL)
                                     }
-                                    if st.session_state.use_remote_embeddings:
-                                        embedding_config["api_key"] = st.session_state.voyageai_api_key
-                                    
+                                    if st.session_state.get("use_remote_embeddings", False):
+                                        embedding_config["api_key"] = st.session_state.get("voyageai_api_key", "")
+
                                     success = _store_in_mongodb(
                                         document=result.document,
                                         original_filename=uploaded_file.name,
                                         file_size=len(uploaded_file.getvalue()),
-                                        mongodb_connection_string=st.session_state.mongodb_connection_string,
-                                        database_name=st.session_state.mongodb_database,
-                                        collection_name=st.session_state.mongodb_collection,
+                                        mongodb_connection_string=st.session_state.get("mongodb_connection_string", ""),
+                                        database_name=st.session_state.get("mongodb_database", "docling_db"),
+                                        collection_name=st.session_state.get("mongodb_collection", "documents"),
                                         embedding_config=embedding_config
                                     )
                                     
@@ -968,11 +969,12 @@ Hugging Face Spaces IP addresses change with each deployment. MongoDB Atlas bloc
                     with col_info:
                         st.info("Tip: Stored documents include full markdown, JSON, and vector embeddings for RAG search.")
                 else:
-                    st.warning("Warning: MongoDB storage is enabled but not configured.")
-                    if use_remote:
-                        st.info("Info: Configure MongoDB connection and VoyageAI API key in the sidebar (Configuration) to enable storage.")
-                    else:
-                        st.info("Info: Configure MongoDB connection in the sidebar (Configuration) to enable storage.")
+                    st.warning("MongoDB storage is enabled but not fully configured.")
+                    if not has_connection_string:
+                        st.error("Missing: MongoDB connection string")
+                    if use_remote and not has_api_key:
+                        st.error("Missing: VoyageAI API key (required for remote embeddings)")
+                    st.info("Configure the missing values in the sidebar under 'Configuration'.")
             else:
                 st.info("Info: MongoDB storage is available but not enabled.")
                 st.info("Tip: Enable it in the sidebar under 'Configuration' → 'MongoDB Storage'")
