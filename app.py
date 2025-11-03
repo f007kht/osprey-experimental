@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Streamlit Document Processor App
 #
 # What this app does:
@@ -306,7 +307,7 @@ with st.sidebar:
     
     # MongoDB Configuration (only if enabled)
     if ENABLE_MONGODB:
-        st.subheader("ðŸ“Š MongoDB Storage")
+        st.subheader("MongoDB Storage")
         mongodb_enabled = st.checkbox(
             "Enable MongoDB Storage",
             value=True,
@@ -336,7 +337,7 @@ with st.sidebar:
         )
         
         st.divider()
-        st.subheader("ðŸ”‘ VoyageAI Configuration")
+        st.subheader("VoyageAI Configuration")
         voyageai_api_key = st.text_input(
             "VoyageAI API Key",
             value=os.getenv("VOYAGEAI_API_KEY", ""),
@@ -362,7 +363,7 @@ with st.sidebar:
     st.session_state.voyageai_api_key = voyageai_api_key
 
 # Set up the Streamlit page title
-st.title("ðŸ“„ Docling Document Processor")
+st.title("Docling Document Processor")
 st.write("Upload a document (PDF, DOCX, PPTX, etc.) to process it with Docling.")
 
 # 1. Create the document upload button
@@ -408,7 +409,7 @@ if uploaded_file is not None:
 
         # 4. Download functionality - enabled by default
         st.divider()
-        st.subheader("ðŸ“¥ Download Processed Document")
+        st.subheader("Download Processed Document")
         
         if ENABLE_DOWNLOADS:
             st.write("Download the processed document in various formats:")
@@ -422,7 +423,7 @@ if uploaded_file is not None:
                 with col1:
                     md_data, md_filename = _prepare_download_data(result, "markdown", base_filename)
                     st.download_button(
-                        label="ðŸ“„ Download Markdown",
+                        label="Download Markdown",
                         data=md_data,
                         file_name=md_filename,
                         mime="text/markdown",
@@ -434,7 +435,7 @@ if uploaded_file is not None:
                 with col2:
                     json_data, json_filename = _prepare_download_data(result, "json", base_filename)
                     st.download_button(
-                        label="ðŸ“‹ Download JSON",
+                        label="Download JSON",
                         data=json_data,
                         file_name=json_filename,
                         mime="application/json",
@@ -446,7 +447,7 @@ if uploaded_file is not None:
                 with col3:
                     txt_data, txt_filename = _prepare_download_data(result, "txt", base_filename)
                     st.download_button(
-                        label="ðŸ“ Download Text",
+                        label="Download Text",
                         data=txt_data,
                         file_name=txt_filename,
                         mime="text/plain",
@@ -471,11 +472,11 @@ if uploaded_file is not None:
                 # App continues normally - download failure doesn't break the app
         else:
             st.warning("Downloads are disabled in this deployment.")
-            st.info("ðŸ’¡ To enable downloads, set environment variable ENABLE_DOWNLOADS=true")
+            st.info("Tip: To enable downloads, set environment variable ENABLE_DOWNLOADS=true")
 
         # 5. MongoDB Storage (if enabled)
         st.divider()
-        st.subheader("ðŸ’¾ Database Storage")
+        st.subheader("Database Storage")
         
         if ENABLE_MONGODB:
             if st.session_state.get("mongodb_enabled", False):
@@ -485,7 +486,7 @@ if uploaded_file is not None:
                     
                     col_save, col_info = st.columns([1, 2])
                     with col_save:
-                        if st.button("ðŸ’¾ Save to MongoDB", key=f"save_mongodb_{uploaded_file.name}", use_container_width=True):
+                        if st.button("Save to MongoDB", key=f"save_mongodb_{uploaded_file.name}", use_container_width=True):
                             try:
                                 with st.spinner("Saving document to MongoDB with embeddings..."):
                                     success = _store_in_mongodb(
@@ -500,12 +501,12 @@ if uploaded_file is not None:
                                     
                                     if success:
                                         st.success("Document saved to MongoDB successfully!")
-                                        st.info("ðŸ’¡ The vector search index is being created automatically. It may take a few minutes to be ready for queries.")
+                                        st.info("Tip: The vector search index is being created automatically. It may take a few minutes to be ready for queries.")
                                     else:
                                         st.error("âŒ Failed to save document to MongoDB. Check error messages above.")
                             except ImportError as e:
                                 st.error(f"âŒ Missing dependency: {e}")
-                                st.info("ðŸ’¡ Install MongoDB dependencies with: pip install pymongo[srv] voyageai")
+                                st.info("Tip: Install MongoDB dependencies with: pip install pymongo[srv] voyageai")
                             except ValueError as e:
                                 st.error(f"âŒ Configuration error: {e}")
                             except Exception as e:
@@ -513,18 +514,18 @@ if uploaded_file is not None:
                                 st.exception(e)
                                 # App continues normally - storage failure doesn't break the app
                     with col_info:
-                        st.info("ðŸ’¡ Stored documents include full markdown, JSON, and vector embeddings for RAG search.")
+                        st.info("Tip: Stored documents include full markdown, JSON, and vector embeddings for RAG search.")
                 else:
                     st.warning("MongoDB storage is enabled but not configured.")
-                    st.info("â„¹ Configure MongoDB connection and VoyageAI API key in the sidebar (Configuration) to enable storage.")
+                    st.info("Info: Configure MongoDB connection and VoyageAI API key in the sidebar (Configuration) to enable storage.")
             else:
-                st.info("â„¹ MongoDB storage is available but not enabled.")
-                st.info("ðŸ’¡ Enable it in the sidebar under 'Configuration' â†’ 'ðŸ“Š MongoDB Storage'")
+                st.info("Info: MongoDB storage is available but not enabled.")
+                st.info("Tip: Enable it in the sidebar under 'Configuration' â†’ 'MongoDB Storage'")
                 if not PYMONGO_AVAILABLE:
                     st.warning("MongoDB dependencies not installed. Install with: pip install pymongo[srv] voyageai")
         else:
-            st.info("â„¹ MongoDB storage feature is not enabled in this deployment.")
-            st.info("ðŸ’¡ To enable: Set environment variable ENABLE_MONGODB=true and install dependencies: pymongo[srv] voyageai")
+            st.info("Info: MongoDB storage feature is not enabled in this deployment.")
+            st.info("Tip: To enable: Set environment variable ENABLE_MONGODB=true and install dependencies: pymongo[srv] voyageai")
 
     except Exception as e:
         st.error(f"An error occurred during processing: {e}")
