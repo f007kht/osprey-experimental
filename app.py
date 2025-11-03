@@ -221,6 +221,55 @@ def _generate_embeddings(chunk_texts: List[str], embedding_config: Optional[Dict
         return embeddings.tolist()  # Convert numpy array to list
 
 
+def _sanitize_for_mongodb(obj: Any) -> Any:
+    """
+    Recursively sanitize data for MongoDB BSON compatibility.
+
+    MongoDB can only handle integers up to 64-bit (8 bytes):
+    - Min: -9,223,372,036,854,775,808
+    - Max: 9,223,372,036,854,775,807
+
+    Python's int type can be arbitrarily large, so we need to convert
+    any integers exceeding this range to strings to avoid OverflowError.
+
+    Args:
+        obj: Any Python object (dict, list, int, float, str, etc.)
+
+    Returns:
+        Sanitized object safe for MongoDB BSON encoding
+    """
+    # MongoDB's 64-bit integer limits
+    MIN_BSON_INT = -9223372036854775808
+    MAX_BSON_INT = 9223372036854775807
+
+    if isinstance(obj, dict):
+        # Recursively sanitize all dictionary values
+        return {key: _sanitize_for_mongodb(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        # Recursively sanitize all list items
+        return [_sanitize_for_mongodb(item) for item in obj]
+    elif isinstance(obj, tuple):
+        # Convert tuples to lists and sanitize
+        return [_sanitize_for_mongodb(item) for item in obj]
+    elif isinstance(obj, int):
+        # Check if integer is within BSON range
+        if obj < MIN_BSON_INT or obj > MAX_BSON_INT:
+            # Convert to string if out of range
+            return str(obj)
+        return obj
+    elif isinstance(obj, (str, float, bool, type(None))):
+        # These types are safe as-is
+        return obj
+    else:
+        # For any other type, try to convert to string
+        # This handles datetime, custom objects, etc.
+        try:
+            return str(obj)
+        except Exception:
+            # If conversion fails, return None
+            return None
+
+
 def _store_in_mongodb(
     document: Any,
     original_filename: str,
@@ -323,7 +372,11 @@ def _store_in_mongodb(
                 "use_remote": embedding_config.get("use_remote", False)
             }
         }
-        
+
+        # Sanitize document for MongoDB BSON compatibility
+        # This converts any integers larger than 64-bit to strings
+        doc_to_store = _sanitize_for_mongodb(doc_to_store)
+
         # Insert document
         result = collection.insert_one(doc_to_store)
         
