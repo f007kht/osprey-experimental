@@ -22,6 +22,7 @@
 import os
 import tempfile
 import json
+import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -45,8 +46,8 @@ try:
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.accelerator_options import AcceleratorDevice
     from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
-    from docling.document_converter import DocumentConverter, PdfFormatOption
     from docling.datamodel.settings import settings
+    from docling.document_converter import DocumentConverter, PdfFormatOption
 except Exception as e:
     st.error(f"Failed to import docling modules: {e}")
     st.exception(e)
@@ -54,7 +55,6 @@ except Exception as e:
 
 # MEMORY OPTIMIZATION: Configure global settings to reduce memory pressure
 # Reduce page batch size from default (4) to 1 to process one page at a time
-# This helps handle 1000kb+ files while keeping image generation enabled
 settings.perf.page_batch_size = 1
 
 # Optional MongoDB and embedding imports
@@ -100,6 +100,9 @@ def get_converter(
     """
     Get or create a cached DocumentConverter instance with configurable options.
 
+    Memory optimization: Image generation is ALWAYS enabled with optimized settings
+    to reduce memory pressure while maintaining image functionality.
+
     Args:
         enable_formula_enrichment: Extract LaTeX representation of formulas
         enable_table_structure: Enable enhanced table structure extraction
@@ -126,18 +129,18 @@ def get_converter(
     pipeline_options.do_code_enrichment = enable_code_enrichment
     pipeline_options.do_picture_classification = enable_picture_classification
 
-    # MEMORY OPTIMIZATION: Enable image generation (required for testing)
-    # Images are needed for visual verification and export
+    # MEMORY OPTIMIZATION: Always enable image generation with optimized settings
+    # This keeps image generation enabled while reducing memory pressure
     pipeline_options.generate_page_images = True
     pipeline_options.generate_picture_images = True
     pipeline_options.images_scale = 1.5  # Reduced from 2.0 to save ~44% memory per image
-    
-    # MEMORY OPTIMIZATION: Reduce queue sizes to prevent memory buildup
-    # Default queue_max_size is 100, which can hold 100 pages with images in memory
-    pipeline_options.queue_max_size = 10  # Limit to 10 pages in queues
-    
-    # MEMORY OPTIMIZATION: Reduce batch sizes to process one page at a time
-    # This reduces peak memory usage by processing pages sequentially
+
+    # CRITICAL: Reduce queue sizes to prevent memory buildup
+    # Default is 100 pages in queue, which can hold many high-res images in memory
+    pipeline_options.queue_max_size = 10  # Limit in-flight pages to 10 instead of 100
+
+    # Reduce batch sizes to process one page at a time
+    # This reduces peak memory usage during processing
     pipeline_options.ocr_batch_size = 1
     pipeline_options.layout_batch_size = 1
     pipeline_options.table_batch_size = 1
@@ -551,9 +554,11 @@ def _store_in_mongodb(
         return True
     
     except Exception as e:
-        # Don't use st.error here - let the caller handle UI messages
-        # This allows the function to be called from different contexts
-        raise  # Re-raise to let caller handle it
+        # Log the error but return False to honor the function contract
+        # The function signature promises -> bool, so we return False instead of raising
+        # Callers can check the return value and handle errors appropriately
+        logging.error(f"Error storing document in MongoDB: {e}", exc_info=True)
+        return False
     finally:
         if 'client' in locals():
             client.close()
