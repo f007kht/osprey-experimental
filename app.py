@@ -44,6 +44,17 @@ if not os.getenv("TESSDATA_PREFIX"):
             os.environ["TESSDATA_PREFIX"] = tessdata_path
             break
 
+# Fix DOCLING_ARTIFACTS_PATH if it's set but invalid
+# This prevents RuntimeError when the path doesn't exist or doesn't contain models
+# Let Docling use its default cache directory (~/.cache/docling) instead
+if os.getenv("DOCLING_ARTIFACTS_PATH"):
+    artifacts_path = os.getenv("DOCLING_ARTIFACTS_PATH")
+    # Check if path exists and is a directory
+    if not os.path.isdir(artifacts_path):
+        # Path is invalid - unset it to use default cache
+        del os.environ["DOCLING_ARTIFACTS_PATH"]
+        print(f"Warning: DOCLING_ARTIFACTS_PATH '{artifacts_path}' is not a valid directory. Using default cache location.")
+
 # Feature flags - can be controlled via environment variables
 # Downloads are always enabled by default (can be disabled via ENABLE_DOWNLOADS=false)
 ENABLE_DOWNLOADS = os.getenv("ENABLE_DOWNLOADS", "true").lower() == "true"
