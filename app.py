@@ -26,6 +26,11 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
+# CRITICAL: Remove DOCLING_ARTIFACTS_PATH BEFORE importing docling modules
+# The settings singleton in docling/datamodel/settings.py caches environment variables
+# at import time. If we don't remove it here, it will be cached even if we delete it later.
+os.environ.pop("DOCLING_ARTIFACTS_PATH", None)
+
 # Set environment variable to use headless OpenCV before any imports
 # This prevents libGL.so.1 errors on headless systems like Streamlit Cloud
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"
@@ -43,17 +48,6 @@ if not os.getenv("TESSDATA_PREFIX"):
         if os.path.exists(tessdata_path):
             os.environ["TESSDATA_PREFIX"] = tessdata_path
             break
-
-# Fix DOCLING_ARTIFACTS_PATH if it's set but invalid
-# This prevents RuntimeError when the path doesn't exist or doesn't contain models
-# Let Docling use its default cache directory (~/.cache/docling) instead
-if os.getenv("DOCLING_ARTIFACTS_PATH"):
-    artifacts_path = os.getenv("DOCLING_ARTIFACTS_PATH")
-    # Check if path exists and is a directory
-    if not os.path.isdir(artifacts_path):
-        # Path is invalid - unset it to use default cache
-        del os.environ["DOCLING_ARTIFACTS_PATH"]
-        print(f"Warning: DOCLING_ARTIFACTS_PATH '{artifacts_path}' is not a valid directory. Using default cache location.")
 
 # Feature flags - can be controlled via environment variables
 # Downloads are always enabled by default (can be disabled via ENABLE_DOWNLOADS=false)
@@ -77,6 +71,11 @@ except Exception as e:
 # MEMORY OPTIMIZATION: Configure global settings to reduce memory pressure
 # Reduce page batch size from default (4) to 1 to process one page at a time
 settings.perf.page_batch_size = 1
+
+# CRITICAL: Override artifacts_path in settings singleton
+# This ensures the cached environment variable value is cleared
+# Even though we removed DOCLING_ARTIFACTS_PATH before import, we override as a safety measure
+settings.artifacts_path = None
 
 # Optional MongoDB and embedding imports
 try:
