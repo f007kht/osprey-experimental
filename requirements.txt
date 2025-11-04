@@ -5,6 +5,7 @@ opencv-python-headless
 streamlit
 docling
 tesserocr
+pypdf  # Required for page count detection and chunked processing
 
 # Optional dependencies for MongoDB storage and RAG features
 # These are only needed if ENABLE_MONGODB=true
