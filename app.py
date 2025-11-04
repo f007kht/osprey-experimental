@@ -23,6 +23,7 @@ import os
 import tempfile
 import json
 import logging
+import signal
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -794,7 +795,31 @@ if uploaded_file is not None:
 
         # Run the conversion process
         with st.spinner(f"Converting `{uploaded_file.name}`..."):
+            import time
+            start_time = time.time()
+            print(f"\n{'='*60}")
+            print(f"CONVERSION START: {uploaded_file.name}")
+            print(f"{'='*60}")
+
+            # Track conversion phases
+            print("Phase 1: Starting converter.convert()...")
             result = converter.convert(tmp_file_path)
+            print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+
+            # Check result object
+            print(f"Phase 2: Checking result object...")
+            print(f"  - result type: {type(result)}")
+            print(f"  - has document: {hasattr(result, 'document')}")
+            if hasattr(result, 'document'):
+                print(f"  - document type: {type(result.document)}")
+                print(f"  - document has pages: {hasattr(result.document, 'pages')}")
+                if hasattr(result.document, 'pages'):
+                    print(f"  - total pages: {len(result.document.pages)}")
+            print(f"Phase 2 complete in {time.time() - start_time:.2f}s")
+
+        print(f"\n{'='*60}")
+        print(f"CONVERSION COMPLETE: Total time {time.time() - start_time:.2f}s")
+        print(f"{'='*60}\n")
 
         st.success("Document processed successfully!")
 
@@ -802,7 +827,11 @@ if uploaded_file is not None:
         st.subheader("Extracted Content (Markdown)")
 
         # Export the document's content to Markdown
+        print("Phase 3: Exporting to markdown...")
+        export_start = time.time()
         markdown_output = result.document.export_to_markdown()
+        print(f"Phase 3 complete: export_to_markdown() in {time.time() - export_start:.2f}s")
+        print(f"  - Markdown length: {len(markdown_output)} characters")
 
         # Display the Markdown in the app.
         # We use a text_area for long outputs, but st.markdown() also works.
