@@ -67,6 +67,7 @@ nav:
       - GPU support: usage/gpu.md
       - MCP server: usage/mcp.md
       - Jobkit: usage/jobkit.md
+      - Troubleshooting: usage/troubleshooting.md
     - FAQ:
       - FAQ: faq/index.md
   - Concepts:
