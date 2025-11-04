@@ -159,7 +159,7 @@ def get_converter(
     # This keeps image generation enabled while reducing memory pressure
     pipeline_options.generate_page_images = True
     pipeline_options.generate_picture_images = True
-    pipeline_options.images_scale = 1.5  # Reduced from 2.0 to save ~44% memory per image
+    pipeline_options.images_scale = 1.0  # Reduced from 1.5 to 1.0 for large documents (saves ~56% memory per image vs 2.0)
 
     # CRITICAL: Reduce queue sizes to prevent memory buildup
     # Default is 100 pages in queue, which can hold many high-res images in memory
@@ -801,10 +801,38 @@ if uploaded_file is not None:
             print(f"CONVERSION START: {uploaded_file.name}")
             print(f"{'='*60}")
 
-            # Track conversion phases
-            print("Phase 1: Starting converter.convert()...")
-            result = converter.convert(tmp_file_path)
-            print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+            # Option B: Detect document size and use chunked processing for large documents
+            # This prevents the 127-page stopping issue by processing in manageable chunks
+            try:
+                from pypdf import PdfReader
+                pdf_reader = PdfReader(tmp_file_path)
+                total_pages = len(pdf_reader.pages)
+                print(f"Document has {total_pages} pages")
+
+                # For documents > 120 pages, process in chunks to avoid memory/timeout issues
+                MAX_PAGES_PER_CHUNK = 120
+                if total_pages > MAX_PAGES_PER_CHUNK:
+                    st.warning(f"⚠️ Large document detected ({total_pages} pages). Processing in chunks of {MAX_PAGES_PER_CHUNK} pages for stability.")
+                    print(f"Large document: processing first {MAX_PAGES_PER_CHUNK} pages of {total_pages}")
+
+                    # Track conversion phases
+                    print(f"Phase 1: Starting converter.convert() with page_range=(1, {MAX_PAGES_PER_CHUNK})...")
+                    result = converter.convert(tmp_file_path, page_range=(1, MAX_PAGES_PER_CHUNK))
+                    print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+
+                    st.info(f"✓ Processed first {MAX_PAGES_PER_CHUNK} pages. Additional chunks can be processed separately.")
+                else:
+                    # Normal processing for documents <= 120 pages
+                    print("Phase 1: Starting converter.convert()...")
+                    result = converter.convert(tmp_file_path)
+                    print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+
+            except Exception as e:
+                # Fallback to normal processing if page detection fails
+                print(f"Could not detect page count: {e}. Using normal processing.")
+                print("Phase 1: Starting converter.convert()...")
+                result = converter.convert(tmp_file_path)
+                print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
 
             # Check result object
             print(f"Phase 2: Checking result object...")

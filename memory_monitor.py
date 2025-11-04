@@ -78,7 +78,7 @@ def monitor_conversion(file_path: str):
     # Enable image generation (as per requirements)
     pipeline_options.generate_page_images = True
     pipeline_options.generate_picture_images = True
-    pipeline_options.images_scale = 1.5
+    pipeline_options.images_scale = 1.0  # Reduced to 1.0 for large document support
     
     # Memory optimizations
     pipeline_options.queue_max_size = 10
