@@ -22,6 +22,7 @@
 import os
 import tempfile
 import json
+import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -553,9 +554,11 @@ def _store_in_mongodb(
         return True
     
     except Exception as e:
-        # Don't use st.error here - let the caller handle UI messages
-        # This allows the function to be called from different contexts
-        raise  # Re-raise to let caller handle it
+        # Log the error but return False to honor the function contract
+        # The function signature promises -> bool, so we return False instead of raising
+        # Callers can check the return value and handle errors appropriately
+        logging.error(f"Error storing document in MongoDB: {e}", exc_info=True)
+        return False
     finally:
         if 'client' in locals():
             client.close()
