@@ -45,11 +45,16 @@ try:
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.accelerator_options import AcceleratorDevice
     from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
+    from docling.datamodel.settings import settings
     from docling.document_converter import DocumentConverter, PdfFormatOption
 except Exception as e:
     st.error(f"Failed to import docling modules: {e}")
     st.exception(e)
     st.stop()
+
+# MEMORY OPTIMIZATION: Configure global settings to reduce memory pressure
+# Reduce page batch size from default (4) to 1 to process one page at a time
+settings.perf.page_batch_size = 1
 
 # Optional MongoDB and embedding imports
 try:
@@ -94,6 +99,9 @@ def get_converter(
     """
     Get or create a cached DocumentConverter instance with configurable options.
 
+    Memory optimization: Image generation is ALWAYS enabled with optimized settings
+    to reduce memory pressure while maintaining image functionality.
+
     Args:
         enable_formula_enrichment: Extract LaTeX representation of formulas
         enable_table_structure: Enable enhanced table structure extraction
@@ -120,10 +128,21 @@ def get_converter(
     pipeline_options.do_code_enrichment = enable_code_enrichment
     pipeline_options.do_picture_classification = enable_picture_classification
 
-    # Generate picture images if classification is enabled
-    if enable_picture_classification:
-        pipeline_options.generate_picture_images = True
-        pipeline_options.images_scale = 2
+    # MEMORY OPTIMIZATION: Always enable image generation with optimized settings
+    # This keeps image generation enabled while reducing memory pressure
+    pipeline_options.generate_page_images = True
+    pipeline_options.generate_picture_images = True
+    pipeline_options.images_scale = 1.5  # Reduced from 2.0 to save ~44% memory per image
+
+    # CRITICAL: Reduce queue sizes to prevent memory buildup
+    # Default is 100 pages in queue, which can hold many high-res images in memory
+    pipeline_options.queue_max_size = 10  # Limit in-flight pages to 10 instead of 100
+
+    # Reduce batch sizes to process one page at a time
+    # This reduces peak memory usage during processing
+    pipeline_options.ocr_batch_size = 1
+    pipeline_options.layout_batch_size = 1
+    pipeline_options.table_batch_size = 1
 
     return DocumentConverter(
         format_options={
