@@ -23,8 +23,22 @@ import os
 import tempfile
 import json
 import logging
+import time
+import sys
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+
+# Configure logging
+log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, log_level, logging.INFO),
+    format=log_format,
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # CRITICAL: Remove DOCLING_ARTIFACTS_PATH BEFORE importing docling modules
 # The settings singleton in docling/datamodel/settings.py caches environment variables
@@ -285,22 +299,29 @@ def _prepare_download_data(
     Returns:
         tuple of (data_string, filename)
     """
+    logger.debug(f"Preparing download data: format={format_type}, filename={base_filename}, normalize={normalize_text}")
+    prep_start = time.time()
     if format_type == "markdown":
+        logger.debug("Exporting to markdown format...")
         data = result.document.export_to_markdown()
         filename = _get_download_filename(base_filename, "md")
     elif format_type == "html":
         # HTML export includes MathML for formulas if formula enrichment is enabled
+        logger.debug("Exporting to HTML format...")
         data = result.document.export_to_html()
         filename = _get_download_filename(base_filename, "html")
     elif format_type == "json":
+        logger.debug("Exporting to JSON format...")
         data = json.dumps(result.document.export_to_dict(), indent=2)
         filename = _get_download_filename(base_filename, "json")
     elif format_type == "txt":
         # Note: strict_text parameter is deprecated but still functional
+        logger.debug("Exporting to plain text format...")
         data = result.document.export_to_markdown(strict_text=True)
         filename = _get_download_filename(base_filename, "txt")
     elif format_type == "doctags":
         # Use export_to_doctags() instead of deprecated export_to_document_tokens()
+        logger.debug("Exporting to doctags format...")
         data = result.document.export_to_doctags()
         filename = _get_download_filename(base_filename, "doctags")
     else:
@@ -308,13 +329,19 @@ def _prepare_download_data(
 
     # Apply text normalization if requested (not for JSON format)
     if normalize_text and format_type != "json":
+        logger.debug(f"Applying text normalization: spacing={fix_spacing}, ligatures={fix_ligatures}, filter_ocr={filter_ocr_artifacts}")
+        norm_start = time.time()
         data = _normalize_text(
             data,
             fix_spacing=fix_spacing,
             fix_ligatures=fix_ligatures,
             filter_ocr_artifacts=filter_ocr_artifacts
         )
+        norm_duration = time.time() - norm_start
+        logger.debug(f"Text normalization complete in {norm_duration:.3f}s, output length: {len(data)} characters")
 
+    prep_duration = time.time() - prep_start
+    logger.debug(f"Download data preparation complete in {prep_duration:.3f}s, output size: {len(data)} characters")
     return data, filename
 
 
@@ -328,11 +355,17 @@ def _chunk_document(document) -> List[Dict[str, Any]]:
     Returns:
         List of chunk dictionaries with text and metadata
     """
+    logger.info("Phase 4: Starting document chunking...")
+    chunk_start = time.time()
+    
     if not CHUNKER_AVAILABLE:
         raise ImportError("HierarchicalChunker not available. Install docling with required dependencies.")
     
+    logger.debug("Initializing HierarchicalChunker...")
     chunker = HierarchicalChunker()
+    logger.debug("Chunking document...")
     chunks = list(chunker.chunk(document))
+    logger.info(f"Document chunked into {len(chunks)} chunks")
     
     chunk_data = []
     for idx, chunk in enumerate(chunks):
@@ -343,7 +376,11 @@ def _chunk_document(document) -> List[Dict[str, Any]]:
                 "hierarchy_level": getattr(chunk, "hierarchy_level", None),
             }
         })
+        if idx < 3 or idx == len(chunks) - 1:  # Log first 3 and last chunk details
+            logger.debug(f"  Chunk {idx}: length={len(chunk.text)} chars, hierarchy_level={getattr(chunk, 'hierarchy_level', None)}")
     
+    chunk_duration = time.time() - chunk_start
+    logger.info(f"Phase 4 complete: Document chunking finished in {chunk_duration:.2f}s")
     return chunk_data
 
 
@@ -361,34 +398,50 @@ def _generate_embeddings(chunk_texts: List[str], embedding_config: Optional[Dict
     Returns:
         List of embedding vectors
     """
+    logger.info("Phase 5: Starting embedding generation...")
+    embed_start = time.time()
+    
     if embedding_config is None:
         embedding_config = {"use_remote": False, "model_name": DEFAULT_EMBEDDING_MODEL}
     
     use_remote = embedding_config.get("use_remote", False)
     model_name = embedding_config.get("model_name", DEFAULT_EMBEDDING_MODEL)
     
+    logger.info(f"Embedding configuration: use_remote={use_remote}, model={model_name}, chunks={len(chunk_texts)}")
+    
     if use_remote:
         # Use VoyageAI (remote)
+        logger.debug("Using VoyageAI remote embeddings...")
         if not VOYAGEAI_AVAILABLE:
             raise ImportError("voyageai not available. Install with: pip install voyageai")
         api_key = embedding_config.get("api_key")
         if not api_key:
             raise ValueError("VoyageAI API key is required for remote embeddings")
         
+        logger.debug("Initializing VoyageAI client...")
         vo = voyageai.Client(api_key)
+        logger.debug(f"Generating embeddings for {len(chunk_texts)} chunks using voyage-context-3...")
         result = vo.contextualized_embed(
             inputs=[chunk_texts],
             model="voyage-context-3"
         )
         embeddings = [emb for r in result.results for emb in r.embeddings]
+        embed_duration = time.time() - embed_start
+        logger.info(f"Phase 5 complete: Remote embeddings generated in {embed_duration:.2f}s, dimensions={len(embeddings[0]) if embeddings else 0}")
         return embeddings
     else:
         # Use local sentence-transformers
+        logger.debug("Using local sentence-transformers embeddings...")
         if not SENTENCE_TRANSFORMERS_AVAILABLE:
             raise ImportError("sentence-transformers not available. Install with: pip install sentence-transformers")
         
+        logger.debug(f"Loading embedding model: {model_name}")
         model = get_embedding_model(model_name)
+        logger.debug(f"Encoding {len(chunk_texts)} chunks...")
         embeddings = model.encode(chunk_texts, show_progress_bar=False)
+        embed_duration = time.time() - embed_start
+        embed_dim = len(embeddings[0]) if len(embeddings) > 0 else 0
+        logger.info(f"Phase 5 complete: Local embeddings generated in {embed_duration:.2f}s, dimensions={embed_dim}")
         return embeddings.tolist()  # Convert numpy array to list
 
 
@@ -507,6 +560,8 @@ def _store_in_mongodb(
         collection = db[collection_name]
         
         # Chunk the document
+        logger.info("Phase 6: Starting MongoDB storage preparation...")
+        storage_start = time.time()
         chunks_data = _chunk_document(document)
         chunk_texts = [chunk["text"] for chunk in chunks_data]
         
@@ -517,6 +572,7 @@ def _store_in_mongodb(
         embedding_dim = len(embeddings[0]) if embeddings else 0
         model_name = embedding_config.get("model_name", DEFAULT_EMBEDDING_MODEL)
         
+        logger.debug("Combining chunks with embeddings...")
         # Combine chunks with embeddings
         chunks_with_embeddings = []
         for chunk_data, embedding in zip(chunks_data, embeddings):
@@ -526,8 +582,11 @@ def _store_in_mongodb(
                 "chunk_index": chunk_data["chunk_index"],
                 "metadata": chunk_data["metadata"]
             })
+        logger.debug(f"Combined {len(chunks_with_embeddings)} chunks with embeddings")
         
         # Prepare document for storage
+        logger.debug("Exporting document to JSON and markdown...")
+        export_start = time.time()
         doc_to_store = {
             "filename": original_filename,
             "original_filename": original_filename,
@@ -543,18 +602,29 @@ def _store_in_mongodb(
                 "use_remote": embedding_config.get("use_remote", False)
             }
         }
+        export_duration = time.time() - export_start
+        logger.debug(f"Document export complete in {export_duration:.3f}s")
 
         # Sanitize document for MongoDB BSON compatibility
         # This converts any integers larger than 64-bit to strings
+        logger.debug("Sanitizing document for MongoDB BSON compatibility...")
+        sanitize_start = time.time()
         doc_to_store = _sanitize_for_mongodb(doc_to_store)
+        sanitize_duration = time.time() - sanitize_start
+        logger.debug(f"Sanitization complete in {sanitize_duration:.3f}s")
 
         # Insert document
+        logger.debug("Inserting document into MongoDB collection...")
+        insert_start = time.time()
         result = collection.insert_one(doc_to_store)
+        insert_duration = time.time() - insert_start
+        logger.info(f"Document inserted successfully in {insert_duration:.3f}s, document_id: {result.inserted_id}")
         
         # Create vector search index if it doesn't exist
         # Note: Index creation is asynchronous and may take time
         # This is best done manually in MongoDB Atlas UI or via separate script
         # But we attempt it here for convenience
+        logger.debug("Creating vector search index...")
         try:
             search_index_model = SearchIndexModel(
                 definition={
@@ -570,19 +640,22 @@ def _store_in_mongodb(
             )
             # This may raise an error if index already exists, which is fine
             collection.create_search_index(model=search_index_model)
+            logger.info("Vector search index creation initiated (may take time to complete)")
         except Exception as idx_error:
             # Index creation might fail if it already exists or lacks permissions
             # This is not critical - document is already stored
             # User can create index manually in MongoDB Atlas UI
-            pass
+            logger.debug(f"Vector index creation skipped (may already exist or lack permissions): {idx_error}")
         
+        storage_duration = time.time() - storage_start
+        logger.info(f"Phase 6 complete: MongoDB storage finished in {storage_duration:.2f}s")
         return True
     
     except Exception as e:
         # Log the error but return False to honor the function contract
         # The function signature promises -> bool, so we return False instead of raising
         # Callers can check the return value and handle errors appropriately
-        logging.error(f"Error storing document in MongoDB: {e}", exc_info=True)
+        logger.error(f"Error storing document in MongoDB: {e}", exc_info=True)
         return False
     finally:
         if 'client' in locals():
@@ -793,8 +866,36 @@ if uploaded_file is not None:
             )
 
         # Run the conversion process
+        # Track conversion phases for debugging
+        start_time = time.time()
+        logger.info("=" * 60)
+        logger.info(f"CONVERSION START: {uploaded_file.name}")
+        logger.info("=" * 60)
+
         with st.spinner(f"Converting `{uploaded_file.name}`..."):
+            # Phase 1: converter.convert()
+            logger.info("Phase 1: Starting converter.convert()...")
+            phase1_start = time.time()
             result = converter.convert(tmp_file_path)
+            phase1_duration = time.time() - phase1_start
+            logger.info(f"Phase 1 complete: converter.convert() returned in {phase1_duration:.2f}s")
+
+            # Phase 2: Result object validation
+            logger.info("Phase 2: Checking result object...")
+            logger.debug(f"  - result type: {type(result)}")
+            logger.debug(f"  - has document: {hasattr(result, 'document')}")
+            if hasattr(result, 'document'):
+                logger.debug(f"  - document type: {type(result.document)}")
+                logger.debug(f"  - document has pages: {hasattr(result.document, 'pages')}")
+                if hasattr(result.document, 'pages'):
+                    logger.info(f"  - total pages: {len(result.document.pages)}")
+            phase2_duration = time.time() - start_time
+            logger.info(f"Phase 2 complete in {phase2_duration:.2f}s")
+
+        total_duration = time.time() - start_time
+        logger.info("=" * 60)
+        logger.info(f"CONVERSION COMPLETE: Total time {total_duration:.2f}s")
+        logger.info("=" * 60)
 
         st.success("Document processed successfully!")
 
@@ -802,7 +903,13 @@ if uploaded_file is not None:
         st.subheader("Extracted Content (Markdown)")
 
         # Export the document's content to Markdown
+        # Phase 3: Markdown export
+        logger.info("Phase 3: Exporting to markdown...")
+        export_start = time.time()
         markdown_output = result.document.export_to_markdown()
+        export_duration = time.time() - export_start
+        logger.info(f"Phase 3 complete: export_to_markdown() in {export_duration:.2f}s")
+        logger.info(f"  - Markdown length: {len(markdown_output)} characters")
 
         # Display the Markdown in the app.
         # We use a text_area for long outputs, but st.markdown() also works.
