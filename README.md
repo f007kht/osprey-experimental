@@ -36,6 +36,107 @@ A Streamlit web application for processing documents using the Docling library. 
 3. **Open your browser:**
    The app will automatically open at `http://localhost:8501`
 
+### Restart Procedure
+
+Knowing when and how to restart the application is essential for applying changes and troubleshooting issues.
+
+#### When to Restart
+
+You should restart the application in the following scenarios:
+
+- **After modifying code**: Any changes to `app.py` or other Python files require a restart to take effect
+- **After changing environment variables**: Both locally and on Hugging Face Spaces, environment variable changes only apply after restart
+- **After installing or updating dependencies**: New packages from `requirements.txt` won't be available until restart
+- **When the app becomes unresponsive**: If the app freezes, crashes, or shows persistent errors, restart may resolve issues
+- **After configuration changes**: Changes to `.streamlit/config.toml` require a restart
+- **When Streamlit cache needs clearing**: Cache corruption or stale data may require restart after clearing cache
+
+#### Local Development Restart
+
+To restart the Streamlit app during local development:
+
+1. **Stop the current process:**
+   - Press `Ctrl+C` in the terminal where Streamlit is running
+   - Or terminate the process using Task Manager (Windows) / Activity Monitor (Mac)
+
+2. **Optional - Clear Streamlit cache** (if experiencing cache-related issues):
+   ```bash
+   # Windows PowerShell
+   Remove-Item -Path "$env:USERPROFILE\.streamlit\cache" -Recurse -Force
+   
+   # Linux/Mac
+   rm -rf ~/.streamlit/cache
+   ```
+
+3. **Restart the app:**
+   ```bash
+   # Standard method
+   streamlit run app.py
+   
+   # Or use the startup script (Windows PowerShell)
+   .\start_streamlit.ps1
+   ```
+
+4. **Verify the restart:**
+   - Check the terminal for startup messages (should show "You can now view your Streamlit app in your browser")
+   - Open or refresh your browser at `http://localhost:8501`
+   - Verify the app loads correctly and any code changes are reflected
+
+**Note:** If you see "Address already in use" errors, ensure all previous Streamlit processes are terminated before restarting.
+
+#### Hugging Face Spaces Restart
+
+To restart the application on Hugging Face Spaces:
+
+1. **Via UI (Manual Restart):**
+   - Navigate to your Space: https://huggingface.co/spaces/f007kht/osprey-experimental
+   - Click the **Settings** tab (gear icon in the top right)
+   - Scroll to the bottom and click **Restart this Space**
+   - Wait for the Space to rebuild (typically 1-3 minutes)
+
+2. **Automatic Restart:**
+   - Occurs automatically after code is pushed to the `main` branch on GitHub
+   - The GitHub Actions workflow syncs changes and triggers a rebuild
+   - No manual intervention needed for code updates
+
+3. **After Environment Variable Changes:**
+   - **Always restart** after adding or modifying environment variables
+   - Changes in the Settings → Variables and secrets section require restart to apply
+   - Verify changes by checking the app sidebar or logs after restart
+
+4. **Verify the restart:**
+   - Check the Space **Logs** tab for startup messages
+   - Verify the app loads correctly at the Space URL
+   - Confirm environment variable changes are reflected (e.g., MongoDB configuration appears in sidebar)
+
+**Important:** Hugging Face Spaces may take 1-3 minutes to fully restart and rebuild. Check the logs to ensure the restart completed successfully.
+
+#### Troubleshooting Restart Issues
+
+**Port Already in Use (Local Development):**
+```bash
+# Windows PowerShell - Kill existing Streamlit processes
+Get-Process python,streamlit -ErrorAction SilentlyContinue | Stop-Process -Force
+
+# Linux/Mac - Kill processes on port 8501
+lsof -ti:8501 | xargs kill -9
+```
+
+**Cache Issues:**
+- Clear the Streamlit cache directory (see step 2 in Local Development Restart above)
+- Clear browser cache if UI issues persist
+- Restart after clearing cache
+
+**Environment Variables Not Applied:**
+- **Local:** Verify environment variables are set correctly in your terminal or `start_streamlit.ps1` script
+- **Hugging Face Spaces:** Confirm variables are saved in Settings → Variables and secrets, then restart
+- Check that variable names match exactly (case-sensitive)
+
+**App Still Shows Old Behavior After Restart:**
+- Hard refresh browser: `Ctrl+Shift+R` (Windows/Linux) or `Cmd+Shift+R` (Mac)
+- Clear browser cache completely
+- Try incognito/private browsing mode to rule out browser cache issues
+
 ### Deployment
 
 The app is deployed on **Hugging Face Spaces**: https://huggingface.co/spaces/f007kht/osprey-experimental
@@ -91,7 +192,7 @@ To enable MongoDB storage and other optional features in your Hugging Face Space
 
 5. **After adding variables:**
    - Click **Save** to apply changes
-   - Restart your Space: Go to **Settings** → **Restart this Space**
+   - **Restart your Space:** Go to **Settings** → **Restart this Space** (see [Restart Procedure](#restart-procedure) section for detailed instructions)
 
 **Important Security Notes:**
 - Use **Secrets** (not Variables) for sensitive data like MongoDB connection strings and API keys
@@ -100,6 +201,45 @@ To enable MongoDB storage and other optional features in your Hugging Face Space
 
 **Verification:**
 After restarting, the sidebar should show MongoDB configuration options instead of "MongoDB features are disabled" message.
+
+### Viewing Documents with MongoDB Compass
+
+MongoDB Compass is a GUI tool that makes it easy to view, query, and analyze your stored documents. It's particularly useful for:
+
+- 🎨 **Better visualization** - See documents in a user-friendly interface
+- 🔎 **Advanced filtering** - Query documents with complex filters
+- 📊 **Schema analysis** - Understand your data structure
+- 📈 **Query performance insights** - Optimize your queries
+
+#### Step 1: Install MongoDB Compass
+
+1. Download MongoDB Compass from: https://www.mongodb.com/try/download/compass
+2. Install the application (available for Windows, macOS, and Linux)
+
+#### Step 2: Connect to MongoDB Atlas
+
+1. Open MongoDB Compass
+2. Click **"New Connection"**
+3. Paste your connection string:
+   ```
+   mongodb+srv://<username>:<password>@cluster.xxxxx.mongodb.net/?retryWrites=true&w=majority
+   ```
+   - Replace `<username>` and `<password>` with your MongoDB Atlas credentials
+   - Replace `cluster.xxxxx.mongodb.net` with your actual cluster address
+4. Click **"Connect"**
+
+#### Step 3: Browse Your Data
+
+Once connected:
+
+1. **Expand your database** - You'll see a list of databases in the left sidebar
+2. **Click on your collection** - Navigate to your documents collection (default: `documents`)
+3. **View documents** - See all your stored documents in a nice GUI with:
+   - Document viewer with syntax highlighting
+   - Search and filter capabilities
+   - Export functionality for analysis
+
+**Tip:** The vector search index is created automatically when documents are saved. It may take a few minutes to be ready for queries. You can verify index creation in the MongoDB Atlas UI under "Search" → "Vector Search Indexes".
 
 ## Project Structure
 
@@ -137,6 +277,7 @@ If you encounter deployment issues on Streamlit Cloud, refer to `deployment-logs
 - **First run is slow:** Docling downloads AI models on first use, which may take several minutes
 - **Memory requirements:** Processing large documents may require significant memory
 - **File upload limits:** Check Streamlit Cloud limits for file upload sizes
+- **App not reflecting changes:** If code changes aren't appearing, try restarting the app (see [Restart Procedure](#restart-procedure))
 
 ### Known Issues and Fixes
 

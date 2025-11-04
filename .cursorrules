@@ -16,6 +16,12 @@ When troubleshooting errors related to Docling:
 
 3. **When suggesting fixes**, cite the relevant documentation page from https://docling-project.github.io/docling/ that supports the solution.
 
+4. **For MongoDB RAG integration issues**, consult:
+   - Official MongoDB RAG example: https://docling-project.github.io/docling/examples/rag_mongodb/#part-3-inserting-to-mongodb
+   - Local reference implementation: `docs/reference/sample_code/rag_mongodb.py`
+   - When debugging MongoDB insertion, vector search index creation, or embedding generation issues, review the reference code to ensure core functionality alignment
+   - Key areas to check: chunking with `HierarchicalChunker`, embedding generation with VoyageAI `contextualized_embed()`, vector index path configuration, and document storage structure
+
 ## Project Context
 
 This project uses Docling for document processing in a Streamlit application deployed on Hugging Face Spaces. The deployment was moved from Streamlit Cloud because:

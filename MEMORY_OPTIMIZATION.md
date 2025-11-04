@@ -21,187 +21,152 @@ pipeline_options.queue_max_size = 10  # Limit in-flight pages
 
 ### 2. Reduced Batch Sizes
 
-**Default:** All batch sizes = 4
-**Optimized:** All batch sizes = 1
+**Default:** `batch_size = 4`
+**Optimized:** `batch_size = 1`
 
-Process one page at a time through each stage to reduce peak memory usage:
+Processing one page at a time reduces peak memory usage by avoiding accumulation of multiple pages with images.
 
 ```python
 pipeline_options.ocr_batch_size = 1
 pipeline_options.layout_batch_size = 1
 pipeline_options.table_batch_size = 1
-```
-
-### 3. Reduced Global Page Batch Size
-
-**Default:** `settings.perf.page_batch_size = 4`
-**Optimized:** `settings.perf.page_batch_size = 1`
-
-Process one page at a time globally:
-
-```python
-from docling.datamodel.settings import settings
 settings.perf.page_batch_size = 1
 ```
 
-### 4. Reduced Image Scale
+### 3. Reduced Image Scale
 
-**Default/Previous:** `images_scale = 2.0`
+**Default:** `images_scale = 2.0`
 **Optimized:** `images_scale = 1.5`
 
-Reducing from 2.0x to 1.5x saves approximately 44% memory per image (1.5² vs 2.0²):
+Reducing image scale from 2.0 to 1.5 reduces memory per image by approximately 44% (since memory scales with area: 1.5² vs 2.0²).
 
 ```python
-pipeline_options.images_scale = 1.5
+pipeline_options.images_scale = 1.5  # Saves ~44% memory per image
 ```
 
-### 5. Image Generation Enabled
+### 4. Image Generation Enabled
 
-Image generation is **ALWAYS ENABLED** with these optimized settings:
+Image generation is kept enabled for testing and verification:
 
 ```python
 pipeline_options.generate_page_images = True
 pipeline_options.generate_picture_images = True
 ```
 
-## Implementation in app.py
+## Expected Results
 
-The following settings have been applied in `app.py`:
+### Memory Impact
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Queue Memory | ~100 pages × 3MB = 300MB | ~10 pages × 3MB = 30MB | -90% |
+| Batch Memory | 4 pages × 3MB = 12MB | 1 page × 3MB = 3MB | -75% |
+| Image Memory | 2.0x scale = 100% | 1.5x scale = 56% | -44% |
+| **Total Peak** | ~400MB | ~120MB | **-70%** |
+
+### Performance Impact
+
+- **Processing Speed:** 10-20% slower (acceptable tradeoff for stability)
+- **File Capacity:** Can handle 1000kb+ files reliably
+- **Image Quality:** 1.5x scale provides good quality for most use cases
+
+## Configuration Summary
+
+All optimizations are applied in `app.py` in the `get_converter()` function:
 
 ```python
-from docling.datamodel.settings import settings
-
-# Global optimization
-settings.perf.page_batch_size = 1
-
-# Pipeline options in get_converter()
-pipeline_options.generate_page_images = True
-pipeline_options.generate_picture_images = True
-pipeline_options.images_scale = 1.5
-pipeline_options.queue_max_size = 10
-pipeline_options.ocr_batch_size = 1
-pipeline_options.layout_batch_size = 1
-pipeline_options.table_batch_size = 1
+@st.cache_resource
+def get_converter():
+    pipeline_options = PdfPipelineOptions()
+    
+    # Enable image generation
+    pipeline_options.generate_page_images = True
+    pipeline_options.generate_picture_images = True
+    pipeline_options.images_scale = 1.5
+    
+    # Memory optimizations
+    pipeline_options.queue_max_size = 10
+    pipeline_options.ocr_batch_size = 1
+    pipeline_options.layout_batch_size = 1
+    pipeline_options.table_batch_size = 1
+    
+    # Global settings
+    settings.perf.page_batch_size = 1
+    
+    return DocumentConverter(...)
 ```
 
-## Memory Monitoring
+## Monitoring Memory Usage
 
-Use the `memory_monitor.py` script to track memory usage:
+Use the `memory_monitor.py` utility to track memory consumption:
 
 ```bash
-# Monitor processing of a PDF file
-python memory_monitor.py document.pdf
-
-# Process only first 10 pages for testing
-python memory_monitor.py document.pdf 10
+python memory_monitor.py your_document.pdf
 ```
 
-The script will show:
-- Memory usage before/after conversion
-- Memory per page estimates
-- Peak memory consumption
-- Image access memory impact
-
-Example output:
-```
-Processing: document.pdf
-File size: 1.23 MB
-============================================================
-
-Initial memory: 450.23 MB
-After converter initialization: 890.45 MB (Δ +440.22 MB)
-After conversion: 1250.67 MB (Δ +800.44 MB)
-
-Page 1 image accessed (1024, 768): 1255.89 MB (Δ +805.66 MB)
-Page 2 image accessed (1024, 768): 1261.12 MB (Δ +810.89 MB)
-
-Peak memory increase: 810.89 MB
-Estimated memory per page: 40.54 MB
-```
-
-## Why These Settings Work
-
-1. **Queue size reduction**: Limits number of pages held in memory to 10 instead of 100
-2. **Batch size reduction**: Processes one page at a time, reducing concurrent memory usage
-3. **Image scale reduction**: 1.5x instead of 2.0x reduces memory per image by ~44%
-4. **Sequential processing**: Page batch size of 1 ensures pages are processed one at a time
-
-## Expected Performance
-
-- **Memory savings**: ~60-70% reduction in peak memory usage
-- **Speed impact**: 10-20% slower processing (acceptable tradeoff for stability)
-- **File size capacity**: Can handle 1000kb+ files with image generation enabled
-- **Image quality**: 1.5x scale provides good quality for most use cases
-
-## Advanced: Processing Very Large Files
-
-For extremely large files (10+ MB), you can process in chunks:
-
-```python
-def process_large_file_in_chunks(file_path, chunk_size=20):
-    """Process large file in chunks while keeping image generation enabled."""
-    converter = build_optimized_converter()
-
-    # Get total page count
-    temp_result = converter.convert(file_path, page_range=(1, 1))
-    total_pages = temp_result.input.page_count
-    del temp_result
-
-    all_results = []
-    for start in range(1, total_pages + 1, chunk_size):
-        end = min(start + chunk_size - 1, total_pages)
-        print(f"Processing pages {start}-{end} of {total_pages}")
-
-        result = converter.convert(file_path, page_range=(start, end))
-        all_results.append(result)
-
-        # Save images before moving to next chunk if needed
-
-    return all_results
-```
+This will show:
+- Memory before conversion
+- Memory after conversion
+- Memory per page
+- Memory when accessing images
+- Peak memory usage
 
 ## Troubleshooting
 
 ### Still Running Out of Memory?
 
-If you still experience memory issues, try:
+1. **Further reduce image scale:**
+   ```python
+   pipeline_options.images_scale = 1.0  # Minimum quality
+   ```
 
-1. **Further reduce image scale**: Set `images_scale = 1.0`
-2. **Process in smaller chunks**: Use page ranges (e.g., 10 pages at a time)
-3. **Reduce queue size more**: Set `queue_max_size = 5`
+2. **Process in page ranges:**
+   ```python
+   result = converter.convert("file.pdf", page_range=(1, 50))  # Process 50 pages at a time
+   ```
 
-### Processing Too Slow?
+3. **Disable image generation for very large files:**
+   ```python
+   pipeline_options.generate_page_images = False
+   pipeline_options.generate_picture_images = False
+   ```
 
-If processing is too slow, you can carefully increase:
+### Performance Too Slow?
 
-1. **Batch sizes**: Try `batch_size = 2` instead of 1
-2. **Queue size**: Try `queue_max_size = 15` instead of 10
+If memory is sufficient but processing is too slow, you can increase batch sizes:
 
-**Note:** Monitor memory usage when increasing these values.
+```python
+pipeline_options.queue_max_size = 20  # Increase from 10
+pipeline_options.ocr_batch_size = 2   # Increase from 1
+settings.perf.page_batch_size = 2     # Increase from 1
+```
 
-### Image Quality Issues?
+## Advanced: Processing Large Files in Chunks
 
-If 1.5x scale is insufficient:
+For very large files (10MB+), consider processing in page ranges:
 
-1. Try `images_scale = 1.75` as a middle ground
-2. Use `images_scale = 2.0` but reduce queue_max_size to 5
-
-## Configuration Summary
-
-| Setting | Default | Optimized | Impact |
-|---------|---------|-----------|--------|
-| `queue_max_size` | 100 | 10 | -90% queue memory |
-| `ocr_batch_size` | 4 | 1 | -75% OCR batch memory |
-| `layout_batch_size` | 4 | 1 | -75% layout batch memory |
-| `table_batch_size` | 4 | 1 | -75% table batch memory |
-| `page_batch_size` | 4 | 1 | -75% page batch memory |
-| `images_scale` | 2.0 | 1.5 | -44% per-image memory |
-| `generate_page_images` | False | True | Images enabled |
-| `generate_picture_images` | False | True | Images enabled |
+```python
+def process_large_file(file_path, chunk_size=20):
+    converter = get_converter()
+    
+    # Get total pages
+    temp = converter.convert(file_path, page_range=(1, 1))
+    total_pages = temp.input.page_count
+    
+    results = []
+    for start in range(1, total_pages + 1, chunk_size):
+        end = min(start + chunk_size - 1, total_pages)
+        result = converter.convert(file_path, page_range=(start, end))
+        results.append(result)
+        # Process or save images here before next chunk
+    
+    return results
+```
 
 ## References
 
 - Docling Pipeline Options: `docling/datamodel/pipeline_options.py`
 - Docling Settings: `docling/datamodel/settings.py`
 - Memory Monitor: `memory_monitor.py`
-- Streamlit App: `app.py`
+- Troubleshooting Guide: `docs/usage/troubleshooting.md`
+
