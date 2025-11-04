@@ -26,9 +26,28 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
+# CRITICAL: Remove DOCLING_ARTIFACTS_PATH BEFORE importing docling modules
+# The settings singleton in docling/datamodel/settings.py caches environment variables
+# at import time. If we don't remove it here, it will be cached even if we delete it later.
+os.environ.pop("DOCLING_ARTIFACTS_PATH", None)
+
 # Set environment variable to use headless OpenCV before any imports
 # This prevents libGL.so.1 errors on headless systems like Streamlit Cloud
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"
+
+# Auto-detect TESSDATA_PREFIX if not already set
+# This ensures Tesseract OCR can find language data files on all platforms
+# The Dockerfile sets this for production, but we detect it at runtime as a fallback
+if not os.getenv("TESSDATA_PREFIX"):
+    # Check common Tesseract installation paths on Linux/Ubuntu systems
+    for tessdata_path in [
+        "/usr/share/tesseract-ocr/5/tessdata/",
+        "/usr/share/tesseract-ocr/4.00/tessdata/",
+        "/usr/share/tesseract-ocr/tessdata/",
+    ]:
+        if os.path.exists(tessdata_path):
+            os.environ["TESSDATA_PREFIX"] = tessdata_path
+            break
 
 # Feature flags - can be controlled via environment variables
 # Downloads are always enabled by default (can be disabled via ENABLE_DOWNLOADS=false)
@@ -36,16 +55,12 @@ ENABLE_DOWNLOADS = os.getenv("ENABLE_DOWNLOADS", "true").lower() == "true"
 # MongoDB storage requires explicit enable via ENABLE_MONGODB=true
 ENABLE_MONGODB = os.getenv("ENABLE_MONGODB", "false").lower() == "true"
 
-# TESSDATA_PREFIX is now set by the Dockerfile at build time
-# The Dockerfile detects the correct tessdata path using dpkg during the build process
-# This eliminates the need for runtime detection and ensures a single source of truth
-
 import streamlit as st
 
 try:
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.accelerator_options import AcceleratorDevice
-    from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractOcrOptions, TesseractCliOcrOptions
     from docling.datamodel.settings import settings
     from docling.document_converter import DocumentConverter, PdfFormatOption
 except Exception as e:
@@ -56,6 +71,11 @@ except Exception as e:
 # MEMORY OPTIMIZATION: Configure global settings to reduce memory pressure
 # Reduce page batch size from default (4) to 1 to process one page at a time
 settings.perf.page_batch_size = 1
+
+# CRITICAL: Override artifacts_path in settings singleton
+# This ensures the cached environment variable value is cleared
+# Even though we removed DOCLING_ARTIFACTS_PATH before import, we override as a safety measure
+settings.artifacts_path = None
 
 # Optional MongoDB and embedding imports
 try:
@@ -116,8 +136,13 @@ def get_converter(
     pipeline_options = PdfPipelineOptions()
     pipeline_options.do_ocr = True
 
-    # Explicitly set Tesseract OCR to avoid RapidOCR fallback and permission errors
-    pipeline_options.ocr_options = TesseractOcrOptions()
+    # Choose Tesseract OCR engine based on environment
+    # If TESSDATA_PREFIX is set, use the library version (faster)
+    # Otherwise, use the CLI version (auto-detects language data)
+    if os.getenv("TESSDATA_PREFIX"):
+        pipeline_options.ocr_options = TesseractOcrOptions()
+    else:
+        pipeline_options.ocr_options = TesseractCliOcrOptions()
 
     # Force CPU device to avoid GPU/CUDA/MPS detection issues that can prevent Streamlit from starting
     # This ensures the app works on systems without GPU or with GPU driver issues
