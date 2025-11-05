@@ -16,3 +16,7 @@ urllib3>=2.0.0  # Required for modern SSL support
 sentence-transformers
 # Remote embeddings (optional, use remote embeddings in UI)
 voyageai
+
+# Settings management
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0  # Optional: for .env file support in local development

@@ -20,5 +20,7 @@ headless = true
 # Force UTF-8 encoding for all content
 gatherUsageStats = false
 serverAddress = "localhost"
-serverPort = 8501
+# Do NOT hardcode port when running on platforms that set $PORT
+# Port is provided via CLI argument (--server.port) or $PORT environment variable in entrypoint
+# serverPort = 8501  # Commented out to allow $PORT to take precedence
 

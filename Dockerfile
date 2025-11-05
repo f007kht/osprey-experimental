@@ -32,13 +32,12 @@ RUN pip install --no-cache-dir --find-links https://download.pytorch.org/whl/cpu
 
 # Set TESSDATA_PREFIX environment variable from the detected path
 # The path was detected during Tesseract installation and saved to /tmp/tessdata_prefix
-# Create entrypoint script that exports TESSDATA_PREFIX before running Streamlit
-# (ENV doesn't support command substitution, so we use a runtime wrapper)
+# Store it for use by entrypoint.sh
 RUN TESSDATA_PREFIX_VALUE=$(cat /tmp/tessdata_prefix) && \
     echo "export TESSDATA_PREFIX=$TESSDATA_PREFIX_VALUE" >> /root/.bashrc && \
     echo "TESSDATA_PREFIX=$TESSDATA_PREFIX_VALUE" >> /etc/environment && \
-    printf '#!/bin/bash\nsource /etc/profile.d/tessdata.sh 2>/dev/null || true\nif [ -f /tmp/tessdata_prefix ]; then\n  export TESSDATA_PREFIX=$(cat /tmp/tessdata_prefix)\nfi\nexec streamlit run app.py --server.port=8501 --server.address=0.0.0.0\n' > /entrypoint.sh && \
-    chmod +x /entrypoint.sh
+    echo "$TESSDATA_PREFIX_VALUE" > /tmp/tessdata_prefix && \
+    echo "TESSDATA_PREFIX (detected): $TESSDATA_PREFIX_VALUE"
 
 # Set environment variables
 ENV OPENCV_IO_ENABLE_OPENEXR=0
@@ -47,11 +46,17 @@ ENV OMP_NUM_THREADS=4
 # Copy Streamlit config
 COPY .streamlit .streamlit
 
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Copy app files
 COPY app.py .
+COPY app_settings.py .
+COPY helpers_mongo.py .
 
-# Expose Streamlit port
+# Expose Streamlit port (use $PORT at runtime, default 8501)
 EXPOSE 8501
 
-# Run Streamlit with entrypoint that sets TESSDATA_PREFIX
+# Run Streamlit with entrypoint that sets TESSDATA_PREFIX and uses $PORT
 CMD ["/bin/bash", "/entrypoint.sh"]

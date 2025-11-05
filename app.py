@@ -20,9 +20,48 @@
 # - For batch processing or saving outputs to files, see `docs/examples/batch_convert.py`.
 
 import os
-import tempfile
 import json
 import logging
+
+# CRITICAL: Health check must be early (before heavy imports)
+# This keeps health endpoint fast and cheap
+import streamlit as st
+
+# Handle health check query parameter early (before loading heavy dependencies)
+try:
+    # Try new query_params API first (Streamlit >= 1.28)
+    params = st.query_params if hasattr(st, "query_params") else {}
+    health_param = params.get("health", ["0"]) if isinstance(params, dict) else params.get("health", "0")
+except Exception:
+    # Fallback for older Streamlit versions
+    try:
+        params = st.experimental_get_query_params()
+        health_param = params.get("health", ["0"])[0] if isinstance(params, dict) else "0"
+    except Exception:
+        health_param = "0"
+
+if health_param in ("1", "true", "True"):
+    # Minimal health check - return immediately without loading heavy dependencies
+    from app_settings import get_settings
+    
+    settings = get_settings()
+    payload = {
+        "status": "ok",
+        "mongo": {
+            "enabled": settings.enable_mongodb,
+            "status": getattr(settings, "mongo_status", "disabled")
+        },
+        "ocr": {
+            "tessdata_prefix": os.environ.get("TESSDATA_PREFIX", "not_set")
+        },
+        "port": os.environ.get("PORT", "8501"),
+        "version": os.environ.get("APP_VERSION", "dev"),
+    }
+    st.write(json.dumps(payload))
+    st.stop()
+
+# Now import heavy dependencies (after health check)
+import tempfile
 import signal
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -32,14 +71,22 @@ from datetime import datetime
 # at import time. If we don't remove it here, it will be cached even if we delete it later.
 os.environ.pop("DOCLING_ARTIFACTS_PATH", None)
 
-# Set environment variable to use headless OpenCV before any imports
-# This prevents libGL.so.1 errors on headless systems like Streamlit Cloud
-os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"
+# Load application settings (must be done early, before other imports that depend on env vars)
+from app_settings import get_settings
+app_config = get_settings()
 
-# Auto-detect TESSDATA_PREFIX if not already set
+# Set environment variables from settings (for compatibility with existing code)
+os.environ["OPENCV_IO_ENABLE_OPENEXR"] = app_config.opencv_io_enable_openexr
+os.environ["PYTHONIOENCODING"] = app_config.python_io_encoding
+os.environ["PYTHONUTF8"] = app_config.python_utf8
+os.environ["LC_ALL"] = app_config.lc_all
+
+# Auto-detect TESSDATA_PREFIX if not already set (with graceful degradation)
 # This ensures Tesseract OCR can find language data files on all platforms
 # The Dockerfile sets this for production, but we detect it at runtime as a fallback
-if not os.getenv("TESSDATA_PREFIX"):
+OCR_AVAILABLE = False
+OCR_STATUS = "unavailable"
+if not app_config.tessdata_prefix:
     # Check common Tesseract installation paths on Linux/Ubuntu systems
     for tessdata_path in [
         "/usr/share/tesseract-ocr/5/tessdata/",
@@ -48,13 +95,32 @@ if not os.getenv("TESSDATA_PREFIX"):
     ]:
         if os.path.exists(tessdata_path):
             os.environ["TESSDATA_PREFIX"] = tessdata_path
+            app_config.tessdata_prefix = tessdata_path
+            OCR_AVAILABLE = True
+            OCR_STATUS = "available"
             break
+    else:
+        # No TESSDATA_PREFIX found - will use CLI OCR mode (degraded but functional)
+        OCR_STATUS = "degraded"
+        logging.warning(
+            "TESSDATA_PREFIX not found. OCR will use CLI mode (auto-detects language data). "
+            "For better performance, set TESSDATA_PREFIX environment variable."
+        )
+else:
+    # TESSDATA_PREFIX was set via environment variable
+    if os.path.exists(app_config.tessdata_prefix):
+        OCR_AVAILABLE = True
+        OCR_STATUS = "available"
+    else:
+        OCR_STATUS = "degraded"
+        logging.warning(
+            f"TESSDATA_PREFIX set to {app_config.tessdata_prefix} but path does not exist. "
+            "Falling back to CLI OCR mode."
+        )
 
-# Feature flags - can be controlled via environment variables
-# Downloads are always enabled by default (can be disabled via ENABLE_DOWNLOADS=false)
-ENABLE_DOWNLOADS = os.getenv("ENABLE_DOWNLOADS", "true").lower() == "true"
-# MongoDB storage requires explicit enable via ENABLE_MONGODB=true
-ENABLE_MONGODB = os.getenv("ENABLE_MONGODB", "false").lower() == "true"
+# Feature flags from settings
+ENABLE_DOWNLOADS = app_config.enable_downloads
+ENABLE_MONGODB = app_config.enable_mongodb
 
 import streamlit as st
 
@@ -70,8 +136,9 @@ except Exception as e:
     st.stop()
 
 # MEMORY OPTIMIZATION: Configure global settings to reduce memory pressure
-# Reduce page batch size from default (4) to 1 to process one page at a time
-settings.perf.page_batch_size = 1
+# Page batch size is configurable via PAGE_BATCH_SIZE env var (default: 1)
+# Higher values = faster processing but more memory usage
+settings.perf.page_batch_size = app_config.page_batch_size
 
 # CRITICAL: Override artifacts_path in settings singleton
 # This ensures the cached environment variable value is cleared
@@ -106,8 +173,42 @@ try:
 except ImportError:
     VOYAGEAI_AVAILABLE = False
 
-# Embedding configuration
-DEFAULT_EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+# Embedding configuration from settings
+DEFAULT_EMBEDDING_MODEL = app_config.embedding_model
+
+# MongoDB connection validation at startup (non-blocking, fast)
+MONGODB_STATUS = "disabled"
+MONGODB_DB_COLLECTION = None
+
+if ENABLE_MONGODB and PYMONGO_AVAILABLE:
+    is_valid, error_msg = app_config.validate_mongodb_config()
+    if is_valid and app_config.mongodb_connection_string:
+        # Use safe_mongo_ping for fast, non-blocking validation
+        connected, status_msg = app_config.safe_mongo_ping(
+            app_config.mongodb_connection_string,
+            timeout_ms=2500
+        )
+        if connected:
+            MONGODB_STATUS = "connected"
+            MONGODB_DB_COLLECTION = f"{app_config.mongodb_database}/{app_config.mongodb_collection}"
+            app_config.mongo_status = f"connected:{status_msg}"
+            logging.info(f"MongoDB: connected to {MONGODB_DB_COLLECTION}")
+        else:
+            MONGODB_STATUS = "error"
+            app_config.mongo_status = f"error:{status_msg}"
+            logging.warning(f"MongoDB: connection failed - {status_msg}")
+    elif error_msg:
+        MONGODB_STATUS = "error"
+        app_config.mongo_status = f"error:{error_msg}"
+        logging.warning(f"MongoDB: configuration error - {error_msg}")
+else:
+    if ENABLE_MONGODB and not PYMONGO_AVAILABLE:
+        MONGODB_STATUS = "error"
+        app_config.mongo_status = "error:pymongo_not_available"
+        logging.warning("MongoDB: enabled but pymongo not available")
+    else:
+        app_config.mongo_status = "disabled"
+        logging.info("MongoDB: disabled (set ENABLE_MONGODB=true to enable)")
 
 # Cache the converter to avoid reinitializing on every upload
 # This prevents memory spikes from loading models multiple times
@@ -138,9 +239,9 @@ def get_converter(
     pipeline_options.do_ocr = True
 
     # Choose Tesseract OCR engine based on environment
-    # If TESSDATA_PREFIX is set, use the library version (faster)
-    # Otherwise, use the CLI version (auto-detects language data)
-    if os.getenv("TESSDATA_PREFIX"):
+    # If TESSDATA_PREFIX is set and available, use the library version (faster)
+    # Otherwise, use the CLI version (auto-detects language data, graceful degradation)
+    if OCR_AVAILABLE and app_config.tessdata_prefix:
         pipeline_options.ocr_options = TesseractOcrOptions()
     else:
         pipeline_options.ocr_options = TesseractCliOcrOptions()
@@ -155,15 +256,15 @@ def get_converter(
     pipeline_options.do_code_enrichment = enable_code_enrichment
     pipeline_options.do_picture_classification = enable_picture_classification
 
-    # MEMORY OPTIMIZATION: Always enable image generation with optimized settings
-    # This keeps image generation enabled while reducing memory pressure
-    pipeline_options.generate_page_images = True
-    pipeline_options.generate_picture_images = True
-    pipeline_options.images_scale = 1.0  # Reduced from 1.5 to 1.0 for large documents (saves ~56% memory per image vs 2.0)
+    # MEMORY OPTIMIZATION: Image generation with configurable settings
+    # Settings can be tuned via IMAGES_ENABLE, IMAGES_SCALE, and PIPELINE_QUEUE_MAX env vars
+    pipeline_options.generate_page_images = app_config.images_enable
+    pipeline_options.generate_picture_images = app_config.images_enable
+    pipeline_options.images_scale = app_config.images_scale  # Default 0.75 for stability with heavy PDFs
 
     # CRITICAL: Reduce queue sizes to prevent memory buildup
     # Default is 100 pages in queue, which can hold many high-res images in memory
-    pipeline_options.queue_max_size = 10  # Limit in-flight pages to 10 instead of 100
+    pipeline_options.queue_max_size = app_config.pipeline_queue_max  # Default 6 for stability
 
     # Reduce batch sizes to process one page at a time
     # This reduces peak memory usage during processing
@@ -528,8 +629,11 @@ def _store_in_mongodb(
                 "metadata": chunk_data["metadata"]
             })
         
-        # Prepare document for storage
-        doc_to_store = {
+        # Import MongoDB size helpers
+        from helpers_mongo import split_for_mongo, bson_len, MAX_BSON_SAFE
+        
+        # Prepare primary document for storage
+        primary_doc = {
             "filename": original_filename,
             "original_filename": original_filename,
             "processed_at": datetime.utcnow().isoformat(),
@@ -546,11 +650,43 @@ def _store_in_mongodb(
         }
 
         # Sanitize document for MongoDB BSON compatibility
-        # This converts any integers larger than 64-bit to strings
-        doc_to_store = _sanitize_for_mongodb(doc_to_store)
-
-        # Insert document
-        result = collection.insert_one(doc_to_store)
+        primary_doc = _sanitize_for_mongodb(primary_doc)
+        
+        # Check if we need to split due to size
+        # If document is large, split into primary + pages
+        if bson_len(primary_doc) >= MAX_BSON_SAFE:
+            # Extract pages from docling_json for separate storage
+            docling_dict = primary_doc.get("docling_json", {})
+            pages_raw = docling_dict.get("pages", [])
+            
+            # Convert pages to list of dicts for splitting
+            page_docs_raw = []
+            for i, page in enumerate(pages_raw):
+                if isinstance(page, dict):
+                    page_docs_raw.append(page)
+                else:
+                    # If page is not a dict, convert it
+                    page_docs_raw.append({"page_index": i, "content": str(page)})
+            
+            # Split primary doc from pages
+            small_primary, page_docs = split_for_mongo(primary_doc, page_docs_raw)
+            
+            # Insert primary document
+            primary_result = collection.insert_one(small_primary)
+            primary_id = primary_result.inserted_id
+            
+            # Insert pages into separate collection (pages collection)
+            pages_collection = db[f"{collection_name}_pages"]
+            for i, page_doc in enumerate(page_docs):
+                page_doc["parent_id"] = primary_id
+                page_doc["page_index"] = i
+                pages_collection.insert_one(page_doc)
+            
+            result = primary_result
+            logging.info(f"Document split: primary ({bson_len(small_primary)} bytes) + {len(page_docs)} pages")
+        else:
+            # Document fits in single BSON doc - insert normally
+            result = collection.insert_one(primary_doc)
         
         # Create vector search index if it doesn't exist
         # Note: Index creation is asynchronous and may take time
@@ -620,7 +756,7 @@ with st.sidebar:
         
         mongodb_connection_string = st.text_input(
             "MongoDB Connection String",
-            value=os.getenv("MONGODB_CONNECTION_STRING", ""),
+            value=app_config.mongodb_connection_string or "",
             type="password",
             help="MongoDB Atlas connection string (e.g., mongodb+srv://...)",
             disabled=not mongodb_enabled
@@ -628,14 +764,14 @@ with st.sidebar:
         
         mongodb_database = st.text_input(
             "Database Name",
-            value=os.getenv("MONGODB_DATABASE", "docling_db"),
+            value=app_config.mongodb_database,
             help="Name of the MongoDB database",
             disabled=not mongodb_enabled
         )
         
         mongodb_collection = st.text_input(
             "Collection Name",
-            value=os.getenv("MONGODB_COLLECTION", "documents"),
+            value=app_config.mongodb_collection,
             help="Name of the MongoDB collection",
             disabled=not mongodb_enabled
         )
@@ -645,7 +781,7 @@ with st.sidebar:
         
         use_remote_embeddings = st.checkbox(
             "Use Remote Embeddings (VoyageAI)",
-            value=os.getenv("USE_REMOTE_EMBEDDINGS", "false").lower() == "true",
+            value=app_config.use_remote_embeddings,
             help="Use VoyageAI for embeddings (requires API key). Unchecked = local models.",
             disabled=not mongodb_enabled
         )
@@ -653,7 +789,7 @@ with st.sidebar:
         if use_remote_embeddings:
             voyageai_api_key = st.text_input(
                 "VoyageAI API Key",
-                value=os.getenv("VOYAGEAI_API_KEY", ""),
+                value=app_config.voyageai_api_key or "",
                 type="password",
                 help="API key for VoyageAI embeddings (required if using remote)",
                 disabled=not mongodb_enabled
@@ -663,7 +799,7 @@ with st.sidebar:
             voyageai_api_key = ""
             embedding_model_name = st.text_input(
                 "Local Embedding Model",
-                value=os.getenv("EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL),
+                value=app_config.embedding_model,
                 help="HuggingFace model name for local embeddings (e.g., sentence-transformers/all-MiniLM-L6-v2)",
                 disabled=not mongodb_enabled
             )

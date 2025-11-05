@@ -31,6 +31,58 @@ This project uses Docling for document processing in a Streamlit application dep
 
 Always refer to the official Docling documentation at https://docling-project.github.io/docling/ when encountering Docling-related errors or configuration issues.
 
+## AI Agent Command Safety Rules
+
+### CRITICAL: Destructive Command Denials
+
+**NEVER execute or suggest these commands without explicit user confirmation:**
+
+- `git fsck --lost-found` - Creates files and can flood output in PowerShell
+- `git reset --hard` - Requires explicit user confirmation (data loss risk)
+- `git clean -fd` - Requires explicit user confirmation (file deletion)
+- `rm -rf` or `Remove-Item -Recurse -Force` - Requires explicit paths and confirmation
+- `git push --force` to `main` or `master` branches - Blocked without user approval
+- Direct modifications to `.git/` directory - Never modify Git internals directly
+- `git reflog expire --expire=now --all && git gc --prune=now` - Requires explicit user consent
+
+### Mandatory Repository Root Verification
+
+**Before ANY Git operation, verify repository root:**
+
+1. Always check working directory: `git rev-parse --show-toplevel`
+2. If not in repo root, change directory first: `Set-Location (git rev-parse --show-toplevel)`
+3. Confirm repo root matches expected project path before destructive operations
+4. This check is MANDATORY before any Git command execution
+
+### Required Preflight Checks
+
+**Before executing potentially destructive Git commands, perform these checks:**
+
+1. **Uncommitted changes check**: `git status --porcelain` before `reset`/`checkout`
+   - If uncommitted changes exist, warn user and require confirmation
+   
+2. **Branch name verification**: `git rev-parse --abbrev-ref HEAD` before destructive operations
+   - Confirm branch name matches expectation
+   - Extra verification for `main`/`master` branches
+   
+3. **Remote sync status**: `git fetch && git status` before force push
+   - Verify local and remote state alignment
+   - Check for unpushed commits
+   
+4. **Repository cleanliness**: Confirm repository state before destructive commands
+   - Check for uncommitted work
+   - Verify user accepts potential data loss
+
+### Output Safety Requirements
+
+**For PowerShell commands, always implement output safety:**
+
+- **Cap outputs**: Always use `Select-Object -First N` (where N is 20, 50, or 100) for potentially long outputs
+- **Progress flags**: Use `--no-progress` flags on Git commands to reduce noise
+- **Error redirection**: Use `2>&1` when combining stdout/stderr streams
+- **Separate parameters**: Always quote `-First <integer>` separately from command output
+- **Long-running commands**: Show progress indicators or run in background when appropriate
+
 ## Comprehensive Software Engineering Directives
 
 ### Code Quality Standards
@@ -149,6 +201,50 @@ Always refer to the official Docling documentation at https://docling-project.gi
   - Ensure all CI checks pass before requesting review
   - Address reviewer feedback promptly
   - Keep PRs focused and reasonably sized
+
+- **Safe Git Command Patterns** (see also "AI Agent Command Safety Rules" above):
+  - **NEVER use `git fsck --lost-found`** in PowerShell pipelines (creates files and can cause output floods)
+  - **For repository integrity checks**, use safe patterns:
+    - Quick inspection: `git fsck --no-reflogs --dangling --no-progress 2>&1 | Select-Object -First 20`
+    - Count dangling objects: `(git fsck --no-reflogs --dangling | Measure-Object).Count`
+    - Always cap PowerShell `Select-Object -First N` with a space-separated integer (never let it concatenate with command output)
+  - **PowerShell pipeline safety** (MANDATORY):
+    - Always quote `-First <integer>` separately from command output
+    - Use `--no-progress` flags to reduce noise
+    - Cap output with `Select-Object -First N` for potentially long-running commands
+    - Verify working directory with `git rev-parse --show-toplevel` before destructive operations
+    - This is REQUIRED for all PowerShell Git commands
+  - **For cleanup**, prefer `git gc` (non-destructive). Only use aggressive pruning (`git reflog expire --expire=now --all && git gc --prune=now`) with explicit user consent
+
+- **Command Safety and Preflight Checks** (see also "AI Agent Command Safety Rules" above):
+  - **Destructive command denials** - NEVER suggest or execute these patterns without explicit user confirmation:
+    - `git fsck --lost-found` (creates files, can flood output) - ALWAYS DENIED
+    - `git reset --hard` without explicit user confirmation - REQUIRES CONFIRMATION
+    - `git clean -fd` without explicit user confirmation - REQUIRES CONFIRMATION
+    - `rm -rf` or `Remove-Item -Recurse -Force` without explicit paths and confirmation - REQUIRES CONFIRMATION
+    - `git push --force` to main/master branches - BLOCKED without user approval
+    - Commands that modify `.git/` directory directly - ALWAYS DENIED
+  - **Repository root enforcement** (MANDATORY):
+    - Before running ANY Git command, verify working directory: `git rev-parse --show-toplevel`
+    - If not in repo root, change directory first: `Set-Location (git rev-parse --show-toplevel)`
+    - Always confirm repo root matches expected project path before destructive operations
+    - This check is MANDATORY and must be performed before every Git operation
+  - **Preflight checks for Git operations** (REQUIRED before destructive commands):
+    - Check for uncommitted changes: `git status --porcelain` before reset/checkout
+      - If uncommitted changes exist, warn user and require explicit confirmation
+    - Verify branch name before destructive operations: `git rev-parse --abbrev-ref HEAD`
+      - Extra verification required for `main`/`master` branches
+    - Check remote sync status before force push: `git fetch && git status`
+      - Verify local and remote state alignment
+      - Check for unpushed commits
+    - Confirm repository is clean or user accepts data loss before destructive commands
+    - These checks are MANDATORY and must be performed before any potentially destructive operation
+  - **Output safety** (REQUIRED for PowerShell commands):
+    - Always cap potentially large outputs with `Select-Object -First N` (where N is a reasonable integer like 20, 50, 100)
+    - Use `--no-progress` flags on Git commands to reduce noise
+    - Redirect stderr: `2>&1` when combining streams in PowerShell
+    - For long-running commands, show progress indicators or run in background when appropriate
+    - This is REQUIRED for all PowerShell pipeline operations
 
 ### Error Handling
 

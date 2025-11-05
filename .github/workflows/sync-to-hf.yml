@@ -30,7 +30,9 @@ jobs:
           git rm -rf --cached . 2>/dev/null || true
           
           # Add only files needed for deployment (ignore missing files)
-          git add app.py Dockerfile requirements.txt README.md .gitattributes .cursorrules .github/workflows/sync-to-hf.yml 2>/dev/null || true
+          git add app.py app_settings.py helpers_mongo.py entrypoint.sh Dockerfile requirements.txt README.md README-startup.md .gitattributes .cursorrules .github/workflows/sync-to-hf.yml 2>/dev/null || true
+          # Add test utilities and documentation (optional but useful)
+          git add test_mongodb_storage.py TEST_PLAN.md QUICK_TEST_REFERENCE.md 2>/dev/null || true
           # Add .streamlit/ if it exists
           if [ -d .streamlit ]; then
             git add .streamlit/
