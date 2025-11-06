@@ -129,6 +129,39 @@ class AppSettings:
         return True, None
     
     @staticmethod
+    def mask_connection_string(uri: str) -> str:
+        """
+        Mask password in MongoDB connection string for safe logging.
+        
+        Args:
+            uri: MongoDB connection string
+            
+        Returns:
+            Connection string with password masked as ***
+        """
+        if not uri:
+            return uri
+        
+        try:
+            # Split at :// to get scheme
+            if "://" not in uri:
+                return uri
+            
+            scheme, rest = uri.split("://", 1)
+            
+            # Check if there's a password (format: user:password@host)
+            if "@" in rest and ":" in rest.split("@", 1)[0]:
+                user_part, tail = rest.split("@", 1)
+                if ":" in user_part:
+                    username, _ = user_part.split(":", 1)
+                    return f"{scheme}://{username}:***@{tail}"
+            
+            return uri
+        except Exception:
+            # If parsing fails, return original (better than crashing)
+            return uri
+    
+    @staticmethod
     def safe_mongo_ping(uri: str, timeout_ms: int = 2500) -> tuple[bool, str]:
         """
         Safely ping MongoDB connection without logging secrets.

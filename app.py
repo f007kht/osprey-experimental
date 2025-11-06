@@ -494,6 +494,41 @@ def _generate_embeddings(chunk_texts: List[str], embedding_config: Optional[Dict
         return embeddings.tolist()  # Convert numpy array to list
 
 
+def sniff_file_format(file_path: str) -> Optional[str]:
+    """
+    Detect file format by checking magic number (first 4 bytes).
+    
+    This helps identify Office files (XLSX/DOCX/PPTX) that have PK header
+    before they're incorrectly detected as PDF, reducing false warnings.
+    
+    Args:
+        file_path: Path to the file to check
+        
+    Returns:
+        Detected format string ('pdf', 'xlsx', 'docx', 'pptx', 'zip-office', or None)
+    """
+    try:
+        from pathlib import Path
+        sig = Path(file_path).read_bytes()[:4]
+        
+        if sig.startswith(b"%PDF"):
+            return "pdf"
+        if sig.startswith(b"PK\x03\x04"):
+            # ZIP container - could be Office file
+            low = file_path.lower()
+            if low.endswith(".xlsx"):
+                return "xlsx"
+            if low.endswith(".docx"):
+                return "docx"
+            if low.endswith(".pptx"):
+                return "pptx"
+            return "zip-office"
+        return None
+    except Exception:
+        # If we can't read the file, return None (let docling handle it)
+        return None
+
+
 def _sanitize_for_mongodb(obj: Any) -> Any:
     """
     Recursively sanitize data for MongoDB BSON compatibility.
@@ -550,7 +585,8 @@ def _store_in_mongodb(
     mongodb_connection_string: str,
     database_name: str,
     collection_name: str,
-    embedding_config: Optional[Dict[str, Any]] = None
+    embedding_config: Optional[Dict[str, Any]] = None,
+    max_retries: int = 3
 ) -> bool:
     """
     Store processed document in MongoDB with vector embeddings.
@@ -580,11 +616,16 @@ def _store_in_mongodb(
         # Connect to MongoDB with SSL/TLS configuration
         # MongoDB Atlas requires proper SSL/TLS setup
         import certifi
+        from pymongo.errors import OperationFailure
 
         # Parse connection string to check format
         # MongoDB Atlas requires mongodb+srv:// format
         if not mongodb_connection_string.startswith('mongodb+srv://') and not mongodb_connection_string.startswith('mongodb://'):
             raise ValueError("Invalid MongoDB connection string format. Use mongodb+srv://...")
+
+        # Mask connection string for logging
+        masked_uri = app_config.mask_connection_string(mongodb_connection_string)
+        logging.info(f"MongoDB: connecting with URI {masked_uri}")
 
         # Configure MongoClient with proper SSL/TLS settings
         # Use pymongo-compatible parameter names (tls, tlsCAFile - NOT ssl_context)
@@ -603,7 +644,18 @@ def _store_in_mongodb(
         )
 
         # Test the connection before proceeding
-        client.admin.command('ping')
+        try:
+            client.admin.command('ping')
+            logging.info("MongoDB: connected successfully")
+        except OperationFailure as auth_error:
+            if auth_error.code == 8000:
+                # Authentication failed - likely password changed
+                logging.error(
+                    f"MongoDB auth failed (code 8000) with URI {masked_uri}. "
+                    "Did the password change? If it contains special characters (@:/#?&% etc.), "
+                    "URL-encode it using urllib.parse.quote_plus()."
+                )
+            raise
 
         db = client[database_name]
         collection = db[collection_name]
@@ -652,6 +704,25 @@ def _store_in_mongodb(
         # Sanitize document for MongoDB BSON compatibility
         primary_doc = _sanitize_for_mongodb(primary_doc)
         
+        # Helper function for exponential backoff retry
+        import time
+        def retry_with_backoff(operation, operation_name, max_retries=max_retries):
+            """Retry operation with exponential backoff."""
+            for attempt in range(max_retries):
+                try:
+                    return operation()
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        # Last attempt, re-raise
+                        raise
+                    # Exponential backoff: 1s, 2s, 4s
+                    wait_time = 2 ** attempt
+                    logging.warning(
+                        f"MongoDB {operation_name} failed (attempt {attempt + 1}/{max_retries}): {e}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    time.sleep(wait_time)
+        
         # Check if we need to split due to size
         # If document is large, split into primary + pages
         if bson_len(primary_doc) >= MAX_BSON_SAFE:
@@ -671,22 +742,31 @@ def _store_in_mongodb(
             # Split primary doc from pages
             small_primary, page_docs = split_for_mongo(primary_doc, page_docs_raw)
             
-            # Insert primary document
-            primary_result = collection.insert_one(small_primary)
+            # Insert primary document with retry
+            primary_result = retry_with_backoff(
+                lambda: collection.insert_one(small_primary),
+                "primary document insert"
+            )
             primary_id = primary_result.inserted_id
             
-            # Insert pages into separate collection (pages collection)
+            # Insert pages into separate collection (pages collection) with retry
             pages_collection = db[f"{collection_name}_pages"]
             for i, page_doc in enumerate(page_docs):
                 page_doc["parent_id"] = primary_id
                 page_doc["page_index"] = i
-                pages_collection.insert_one(page_doc)
+                # Use default parameter to capture page_doc in closure correctly
+                def insert_page(pd=page_doc):
+                    return pages_collection.insert_one(pd)
+                retry_with_backoff(insert_page, f"page {i} insert")
             
             result = primary_result
             logging.info(f"Document split: primary ({bson_len(small_primary)} bytes) + {len(page_docs)} pages")
         else:
-            # Document fits in single BSON doc - insert normally
-            result = collection.insert_one(primary_doc)
+            # Document fits in single BSON doc - insert normally with retry
+            result = retry_with_backoff(
+                lambda: collection.insert_one(primary_doc),
+                "document insert"
+            )
         
         # Create vector search index if it doesn't exist
         # Note: Index creation is asynchronous and may take time
@@ -719,7 +799,17 @@ def _store_in_mongodb(
         # Log the error but return False to honor the function contract
         # The function signature promises -> bool, so we return False instead of raising
         # Callers can check the return value and handle errors appropriately
-        logging.error(f"Error storing document in MongoDB: {e}", exc_info=True)
+        from pymongo.errors import OperationFailure
+        
+        if isinstance(e, OperationFailure) and e.code == 8000:
+            masked_uri = app_config.mask_connection_string(mongodb_connection_string)
+            logging.error(
+                f"MongoDB auth failed (code 8000) with URI {masked_uri}. "
+                "Did the password change? If it contains special characters (@:/#?&% etc.), "
+                "URL-encode it using urllib.parse.quote_plus()."
+            )
+        else:
+            logging.error(f"Error storing document in MongoDB: {e}", exc_info=True)
         return False
     finally:
         if 'client' in locals():
@@ -914,6 +1004,11 @@ if uploaded_file is not None:
     ) as tmp_file:
         tmp_file.write(uploaded_file.getvalue())
         tmp_file_path = tmp_file.name
+
+    # Sniff file format by magic number to help with logging
+    detected_format = sniff_file_format(tmp_file_path)
+    if detected_format:
+        logging.debug(f"File signature detected: {detected_format} for {uploaded_file.name}")
 
     st.info(f"Processing `{uploaded_file.name}`... This might take a moment.")
 
@@ -1131,6 +1226,9 @@ if uploaded_file is not None:
                         if st.button("Save to MongoDB", key=f"save_mongodb_{uploaded_file.name}", type="primary", use_container_width=True):
                             try:
                                 with st.spinner("Saving document to MongoDB with embeddings..."):
+                                    import time
+                                    storage_start_time = time.time()
+                                    
                                     embedding_config = {
                                         "use_remote": st.session_state.get("use_remote_embeddings", False),
                                         "model_name": st.session_state.get("embedding_model_name", DEFAULT_EMBEDDING_MODEL)
@@ -1147,6 +1245,9 @@ if uploaded_file is not None:
                                         collection_name=st.session_state.get("mongodb_collection", "documents"),
                                         embedding_config=embedding_config
                                     )
+                                    
+                                    storage_time = time.time() - storage_start_time
+                                    logging.info(f"MongoDB storage completed in {storage_time:.2f}s")
                                     
                                     if success:
                                         st.success("Document saved to MongoDB successfully!")
