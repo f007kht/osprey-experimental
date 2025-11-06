@@ -78,6 +78,7 @@ def send_email_alert(to_email: str, subject: str, body: str) -> bool:
         logging.warning("Email alert configured but SMTP settings incomplete")
         return False
     
+    server = None
     try:
         import smtplib
         from email.mime.text import MIMEText
@@ -93,11 +94,17 @@ def send_email_alert(to_email: str, subject: str, body: str) -> bool:
         server.starttls()
         server.login(ALERT_SMTP_USER, ALERT_SMTP_PASS)
         server.send_message(msg)
-        server.quit()
         return True
     except Exception as e:
         logging.error(f"Email alert failed: {e}")
         return False
+    finally:
+        # Ensure SMTP connection is always closed, even on exception
+        if server is not None:
+            try:
+                server.quit()
+            except Exception:
+                pass  # Ignore errors during cleanup
 
 
 def check_suspect_rate(collection, threshold: float) -> Optional[Dict[str, Any]]:
@@ -376,40 +383,45 @@ def main():
                         }
                     }
                     
-                    # Deduplicate: only send if not sent recently (within interval)
-                    should_send = True
+                    # Deduplicate: per-check-type deduplication (independent tracking)
+                    # Filter out breaches that were recently alerted
+                    breaches_to_alert = []
                     for breach in breaches:
                         check_type = breach["check"]
                         if check_type in last_alert_time:
                             time_since = time.time() - last_alert_time[check_type]
                             if time_since < ALERT_INTERVAL_SECONDS:
-                                should_send = False
-                                break
+                                logging.debug(f"Skipping {check_type} alert (sent {time_since:.0f}s ago, < {ALERT_INTERVAL_SECONDS}s)")
+                                continue
+                        breaches_to_alert.append(breach)
                     
-                    if should_send:
+                    if breaches_to_alert:
+                        # Update payload with filtered breaches
+                        alert_payload["breaches"] = breaches_to_alert
+                        
                         # Send alerts
                         alert_sent = False
                         
                         if ALERT_WEBHOOK_URL:
                             if send_webhook_alert(ALERT_WEBHOOK_URL, alert_payload):
-                                logging.info(f"✓ Webhook alert sent: {len(breaches)} breach(es)")
+                                logging.info(f"✓ Webhook alert sent: {len(breaches_to_alert)} breach(es)")
                                 alert_sent = True
                         
                         if ALERT_EMAIL_TO:
-                            subject = f"Docling QA Alert: {len(breaches)} Quality Breach(es)"
+                            subject = f"Docling QA Alert: {len(breaches_to_alert)} Quality Breach(es)"
                             body = json.dumps(alert_payload, indent=2)
                             if send_email_alert(ALERT_EMAIL_TO, subject, body):
                                 logging.info(f"✓ Email alert sent to {ALERT_EMAIL_TO}")
                                 alert_sent = True
                         
                         if alert_sent:
-                            # Update last alert time for each check type
-                            for breach in breaches:
+                            # Update last alert time for each check type that was alerted
+                            for breach in breaches_to_alert:
                                 last_alert_time[breach["check"]] = time.time()
                         else:
                             logging.warning("Alert configured but failed to send")
                     else:
-                        logging.info(f"Breaches detected but alert recently sent (deduplication)")
+                        logging.info(f"All breaches were recently alerted (deduplication)")
                 else:
                     logging.debug("No breaches detected")
                 
