@@ -394,6 +394,8 @@ The dashboard shows:
 - **Processing Time Statistics**: Average/min/max processing times by format
 - **Suspect Documents**: Filterable table of documents with quality issues
 
+**Quality Notes**: Documents with `status.notes` containing `OSD_FAILS_ON_TEXTLAYER` indicate PDFs with text layers that still triggered OSD errors (typically on page 0 cover tiles). These documents maintain `quality_bucket=ok` but can be filtered in the dashboard for review.
+
 **Note**: The dashboard requires MongoDB to be enabled and configured. It fails gracefully if MongoDB is unavailable.
 
 ### Normalized Warning Codes
@@ -405,6 +407,7 @@ The system logs normalized warning codes for easier monitoring:
 | `FORMAT_CONFLICT` | Magic bytes and file extension conflict |
 | `WMF_LOADER_MISSING` | WMF/EMF graphics cannot be loaded (PPTX) |
 | `OSD_FAIL` | Orientation and script detection failed (PDF) |
+| `OSD_FAIL_COLLAPSED` | OSD failures suppressed after first failure on page 0 (text layer detected) |
 | `SHORT_MD` | Markdown output is very short (< 500 chars) |
 | `OVERSIZE` | Markdown output exceeds 2M characters (runaway duplication) |
 
@@ -423,6 +426,15 @@ Control QA features and guardrails via environment variables:
 
 **Guardrails**: Documents exceeding `QA_MAX_PAGES` or `QA_MAX_SECONDS` are gracefully aborted with `status.abort.reason` set to `MAX_PAGES` or `MAX_SECONDS`. The quality bucket is set to `suspect` and processing stops to prevent resource exhaustion.
 
+**PDF Noise Suppression**: For non-PDF files (PPTX, XLSX, DOCX), PDF library probes can emit false warnings ("invalid pdf header: b'PK...", "EOF marker not found"). These are automatically suppressed at the logger level when `QA_FLAG_ENABLE_PDF_WARNING_SUPPRESS=1` (default). Format detection via magic bytes happens first, ensuring PDF code paths are not triggered for Office documents.
+
+**OSD Collapse for Text-Layer PDFs**: When a PDF has a text layer detected (`text_layer_detected=True`), OCR and OSD are disabled. If OSD errors still occur (e.g., on page 0 cover tiles), they are collapsed after the first failure:
+- All OSD failures are counted in `warnings.osd_fail_count`
+- Only the first OSD error on page 0 is logged
+- Subsequent OSD errors are suppressed (QA log shows `osd_collapsed=1`)
+- A single summary warning is emitted: `OSD_FAIL_COLLAPSED`
+- Quality bucket remains `ok` but `status.notes` includes `OSD_FAILS_ON_TEXTLAYER` for dashboard filtering
+
 ### Correlation IDs
 
 Every document conversion generates correlation IDs for log ↔ Mongo joinability:
@@ -437,7 +449,13 @@ Every document conversion generates correlation IDs for log ↔ Mongo joinabilit
 
 Example QA log line:
 ```
-QA: format=PDF pages=5 md=1234 osd_fails=0 wmf_skipped=0 tlayer=true bucket=ok sec=2.45 run_id=abc12345 hash=def67890
+QA: format=PDF pages=5 md=1234 osd_fails=0 wmf_skipped=0 tlayer=true osd_collapsed=0 bucket=ok sec=2.45 run_id=abc12345 hash=def67890
+```
+
+**OSD Collapse Example** (text layer detected, OSD errors suppressed):
+```
+QA: format=PDF pages=101 md=218378 osd_fails=49 wmf_skipped=0 tlayer=True osd_collapsed=1 bucket=ok sec=155.94 run_id=... hash=...
+PDF: OSD suppressed after first failure on page 0 (OSD_FAIL_COLLAPSED) run_id=... hash=...
 ```
 
 ### Idempotent Storage
