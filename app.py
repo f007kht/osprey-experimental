@@ -1532,31 +1532,31 @@ if uploaded_file is not None:
                             print("Phase 1: Starting converter.convert()...")
                             result = converter.convert(tmp_file_path)
                             print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
-                    
-                    # Guardrail: Check MAX_SECONDS limit
-                    elapsed = time.time() - start_time
-                    if elapsed > MAX_SECONDS:
-                        extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": elapsed}
-                        logging.warning(_scrub_secrets(f"WARNING - MAX_SECONDS exceeded: {elapsed:.2f}s > {MAX_SECONDS}s run_id={run_id} hash={content_hash[:8]}"))
-                        st.warning(f"⚠️ Processing exceeded maximum time limit ({elapsed:.1f}s > {MAX_SECONDS}s). Further processing aborted.")
-                        if 'result' in locals() and result is not None:
-                            # Mark result as incomplete
-                            pass
+                        
+                        # Guardrail: Check MAX_SECONDS limit
+                        elapsed = time.time() - start_time
+                        if elapsed > MAX_SECONDS:
+                            extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": elapsed}
+                            logging.warning(_scrub_secrets(f"WARNING - MAX_SECONDS exceeded: {elapsed:.2f}s > {MAX_SECONDS}s run_id={run_id} hash={content_hash[:8]}"))
+                            st.warning(f"⚠️ Processing exceeded maximum time limit ({elapsed:.1f}s > {MAX_SECONDS}s). Further processing aborted.")
+                            if 'result' in locals() and result is not None:
+                                # Mark result as incomplete
+                                pass
 
-                except Exception as e:
-                    # Fallback to normal processing if page detection fails
-                    print(f"Could not detect page count: {e}. Using normal processing.")
-                    print("Phase 1: Starting converter.convert()...")
-                    # Already wrapped in suppress_pdf_noise_for_non_pdf above
-                    result = converter.convert(tmp_file_path)
-                    print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
-                    
-                    # Guardrail: Check MAX_SECONDS limit after fallback
-                    elapsed = time.time() - start_time
-                    if elapsed > MAX_SECONDS:
-                        extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": elapsed}
-                        logging.warning(_scrub_secrets(f"WARNING - MAX_SECONDS exceeded: {elapsed:.2f}s > {MAX_SECONDS}s run_id={run_id} hash={content_hash[:8]}"))
-                        st.warning(f"⚠️ Processing exceeded maximum time limit ({elapsed:.1f}s > {MAX_SECONDS}s). Further processing aborted.")
+                    except Exception as e:
+                        # Fallback to normal processing if page detection fails
+                        print(f"Could not detect page count: {e}. Using normal processing.")
+                        print("Phase 1: Starting converter.convert()...")
+                        # Already wrapped in suppress_pdf_noise_for_non_pdf above
+                        result = converter.convert(tmp_file_path)
+                        print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+                        
+                        # Guardrail: Check MAX_SECONDS limit after fallback
+                        elapsed = time.time() - start_time
+                        if elapsed > MAX_SECONDS:
+                            extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": elapsed}
+                            logging.warning(_scrub_secrets(f"WARNING - MAX_SECONDS exceeded: {elapsed:.2f}s > {MAX_SECONDS}s run_id={run_id} hash={content_hash[:8]}"))
+                            st.warning(f"⚠️ Processing exceeded maximum time limit ({elapsed:.1f}s > {MAX_SECONDS}s). Further processing aborted.")
         finally:
             # Always remove log handler and filter after conversion (even on error)
             try:
