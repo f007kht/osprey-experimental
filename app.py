@@ -549,6 +549,16 @@ def _ext_to_office(fmt_ext: str) -> Optional[str]:
     return None
 
 
+def _looks_like_office_zip(first_bytes: bytes) -> bool:
+    """Check if bytes start with Office ZIP magic signature."""
+    return first_bytes.startswith(b"PK\x03\x04")
+
+
+def _looks_like_pdf(first_bytes: bytes) -> bool:
+    """Check if bytes start with PDF magic signature."""
+    return first_bytes.startswith(b"%PDF")
+
+
 def sniff_file_format(filename: str, first_bytes: bytes) -> Tuple[str, float, bool, Optional[str]]:
     """
     Detect file format using magic bytes and extension.
@@ -644,6 +654,27 @@ def suppress_pdf_noise_for_non_pdf(active: bool):
                 lg.removeFilter(_pdf_noise_filter)
             except Exception:
                 pass
+
+
+class _PerDocOsdFilter(logging.Filter):
+    """Per-document OSD filter for interleaving safety (matches by temp filename)."""
+    def __init__(self, doc_token: str, extras: dict):
+        super().__init__()
+        self.doc_token = doc_token
+        self.extras = extras
+        self.hit = False
+    
+    def filter(self, record):
+        msg = str(record.getMessage() or "")
+        if "OSD failed for doc" in msg and self.doc_token in msg:
+            if not self.hit:
+                self.hit = True
+                self.extras["osd_suppressed_after_first"] = True
+                # Allow the first one through
+                return True
+            # Swallow subsequent messages for THIS doc only
+            return False
+        return True
 
 
 def _handle_wmf_graphics(log_line: str, metrics: dict):
@@ -841,6 +872,12 @@ def _assign_quality_bucket(m: dict) -> str:
             m["status"]["notes"].append("OSD_FAILS_ON_TEXTLAYER")
     
     return "ok"
+
+
+def _add_osd_collapsed_note(metrics: dict, extras: dict):
+    """Add OSD_COLLAPSED note to metrics if OSD was suppressed."""
+    if extras.get("osd_suppressed_after_first"):
+        metrics["status"].setdefault("notes", []).append("OSD_COLLAPSED")
 
 
 def _sanitize_for_mongodb(obj: Any) -> Any:
@@ -1424,6 +1461,28 @@ if uploaded_file is not None:
                 extras["text_layer_detected"] = True
                 extras["ocr_engine"] = "none"  # Audit trail: OCR disabled due to text layer
                 logging.info("PDF text layer detected - OCR and OSD disabled for this document")
+                
+                # Disable OSD/OCR at the source (pipeline options)
+                # Try to access converter options and disable OCR/OSD
+                try:
+                    # Check if converter has options attribute
+                    if hasattr(converter, "options"):
+                        opts = converter.options
+                        if isinstance(opts, dict):
+                            opts["ocr"] = "none"
+                            opts["osd"] = False
+                            opts["tesseract_osd"] = False
+                            opts["psm"] = 6
+                    # Fallback: try setter methods
+                    if hasattr(converter, "set_ocr"):
+                        try:
+                            converter.set_ocr(False)
+                        except Exception:
+                            pass
+                    # Environment belt-and-suspenders for tesseract-based OSD
+                    os.environ["TESSERACT_OSD_DISABLED"] = "1"
+                except Exception:
+                    pass  # Graceful degradation if options not accessible
         
         # Track OSD failures and WMF warnings by intercepting log messages
         osd_fail_count = 0
@@ -1442,21 +1501,11 @@ if uploaded_file is not None:
                 # Scrub secrets from log messages
                 msg_scrubbed = _scrub_secrets(msg)
                 
-                # Track OSD failures with collapse logic for text-layer PDFs
+                # Track OSD failures (count only - suppression handled by _PerDocOsdFilter)
                 if 'OSD failed' in msg_scrubbed:
                     warnings_dict = self.extras.setdefault("warnings", {})
-                    # Increment count
+                    # Increment count (always count, even if suppressed by filter)
                     warnings_dict["osd_fail_count"] = warnings_dict.get("osd_fail_count", 0) + 1
-                    
-                    # Collapse spam: if text layer detected and this is page 0, suppress after first
-                    if self.extras.get("text_layer_detected") and "page: 0" in msg_scrubbed:
-                        if not self.extras.get("osd_suppressed_after_first"):
-                            # First OSD failure on page 0 with text layer - mark for suppression
-                            self.extras["osd_suppressed_after_first"] = True
-                        # Swallow subsequent OSD messages if suppressed
-                        if self.extras.get("osd_suppressed_after_first"):
-                            # Filter out this record to prevent it from being emitted
-                            return
                 
                 # Track WMF/EMF warnings
                 if 'WMF' in msg_scrubbed or 'EMF' in msg_scrubbed or 'cannot be loaded by Pillow' in msg_scrubbed:
@@ -1471,20 +1520,14 @@ if uploaded_file is not None:
         docling_logger = logging.getLogger('docling')
         docling_logger.addHandler(metrics_handler)
         
-        # Add filter to suppress OSD messages when collapsed
-        class OSDSuppressFilter(logging.Filter):
-            def __init__(self, extras_dict):
-                super().__init__()
-                self.extras = extras_dict
-            def filter(self, record):
-                msg = str(record.getMessage() or "")
-                # Suppress OSD messages if we've marked for suppression
-                if 'OSD failed' in msg and self.extras.get("osd_suppressed_after_first"):
-                    return False  # Filter out this record
-                return True  # Allow other messages
+        # Extract temp filename for per-doc filtering
+        tmp_filename = os.path.basename(tmp_file_path)
+        osd_filter = _PerDocOsdFilter(tmp_filename, extras)
+        root_logger = logging.getLogger()
         
-        osd_filter = OSDSuppressFilter(extras)
+        # Add OSD filter to both docling and root loggers
         docling_logger.addFilter(osd_filter)
+        root_logger.addFilter(osd_filter)
         
         try:
             # Run the conversion process
@@ -1494,74 +1537,93 @@ if uploaded_file is not None:
                 print(f"CONVERSION START: {uploaded_file.name}")
                 print(f"{'='*60}")
 
-                # Determine if this is a non-PDF format (for noise suppression)
-                is_non_pdf = fmt in ('xlsx', 'pptx', 'docx', 'office-zip')
-                should_suppress = QA_FLAG_ENABLE_PDF_WARNING_SUPPRESS and is_non_pdf
+                # Pre-sniff on raw bytes to decide early if we should suppress
+                # This happens before any Docling format detection/probe
+                non_pdf_suppress = _looks_like_office_zip(first_bytes)
+                should_suppress = QA_FLAG_ENABLE_PDF_WARNING_SUPPRESS and non_pdf_suppress
                 
-                # Wrap entire conversion in PDF noise suppression for non-PDF files
-                with suppress_pdf_noise_for_non_pdf(should_suppress):
-                    # Option B: Detect document size and use chunked processing for large documents
-                    # This prevents the 127-page stopping issue by processing in manageable chunks
-                    try:
-                        from pypdf import PdfReader
-                        pdf_reader = PdfReader(tmp_file_path)
-                        total_pages = len(pdf_reader.pages)
-                        print(f"Document has {total_pages} pages")
+                # Wrap entire conversion (including format detection) in PDF noise suppression
+                # Also attach filter to root logger for libraries that emit via root
+                root_logger_for_noise = logging.getLogger()
+                if should_suppress:
+                    root_logger_for_noise.addFilter(_pdf_noise_filter)
+                try:
+                    with suppress_pdf_noise_for_non_pdf(should_suppress):
+                        # Option B: Detect document size and use chunked processing for large documents
+                        # This prevents the 127-page stopping issue by processing in manageable chunks
+                        try:
+                            from pypdf import PdfReader
+                            pdf_reader = PdfReader(tmp_file_path)
+                            total_pages = len(pdf_reader.pages)
+                            print(f"Document has {total_pages} pages")
 
-                        # Guardrail: Check MAX_PAGES limit
-                        if total_pages > MAX_PAGES:
-                            extras["abort"] = {"reason": "MAX_PAGES", "limit": MAX_PAGES, "actual": total_pages}
-                            logging.warning(_scrub_secrets(f"WARNING - MAX_PAGES exceeded: {total_pages} > {MAX_PAGES} run_id={run_id} hash={content_hash[:8]}"))
-                            st.warning(f"⚠️ Document exceeds maximum page limit ({total_pages} > {MAX_PAGES} pages). Processing aborted.")
-                            # Create a minimal result stub for metrics extraction
-                            result = None
-                        # For documents > 120 pages, process in chunks to avoid memory/timeout issues
-                        elif total_pages > 120:
-                            MAX_PAGES_PER_CHUNK = 120
-                            st.warning(f"⚠️ Large document detected ({total_pages} pages). Processing in chunks of {MAX_PAGES_PER_CHUNK} pages for stability.")
-                            print(f"Large document: processing first {MAX_PAGES_PER_CHUNK} pages of {total_pages}")
+                            # Guardrail: Check MAX_PAGES limit
+                            if total_pages > MAX_PAGES:
+                                extras["abort"] = {"reason": "MAX_PAGES", "limit": MAX_PAGES, "actual": total_pages}
+                                logging.warning(_scrub_secrets(f"WARNING - MAX_PAGES exceeded: {total_pages} > {MAX_PAGES} run_id={run_id} hash={content_hash[:8]}"))
+                                st.warning(f"⚠️ Document exceeds maximum page limit ({total_pages} > {MAX_PAGES} pages). Processing aborted.")
+                                # Create a minimal result stub for metrics extraction
+                                result = None
+                            # For documents > 120 pages, process in chunks to avoid memory/timeout issues
+                            elif total_pages > 120:
+                                MAX_PAGES_PER_CHUNK = 120
+                                st.warning(f"⚠️ Large document detected ({total_pages} pages). Processing in chunks of {MAX_PAGES_PER_CHUNK} pages for stability.")
+                                print(f"Large document: processing first {MAX_PAGES_PER_CHUNK} pages of {total_pages}")
 
-                            # Track conversion phases
-                            print(f"Phase 1: Starting converter.convert() with page_range=(1, {MAX_PAGES_PER_CHUNK})...")
-                            result = converter.convert(tmp_file_path, page_range=(1, MAX_PAGES_PER_CHUNK))
-                            print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+                                # Track conversion phases
+                                print(f"Phase 1: Starting converter.convert() with page_range=(1, {MAX_PAGES_PER_CHUNK})...")
+                                result = converter.convert(tmp_file_path, page_range=(1, MAX_PAGES_PER_CHUNK))
+                                print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
 
-                            st.info(f"✓ Processed first {MAX_PAGES_PER_CHUNK} pages. Additional chunks can be processed separately.")
-                        else:
-                            # Normal processing for documents <= 120 pages
+                                st.info(f"✓ Processed first {MAX_PAGES_PER_CHUNK} pages. Additional chunks can be processed separately.")
+                            else:
+                                # Normal processing for documents <= 120 pages
+                                print("Phase 1: Starting converter.convert()...")
+                                result = converter.convert(tmp_file_path)
+                                print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+                            
+                            # Guardrail: Check MAX_SECONDS limit
+                            elapsed = time.time() - start_time
+                            if elapsed > MAX_SECONDS:
+                                extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": elapsed}
+                                logging.warning(_scrub_secrets(f"WARNING - MAX_SECONDS exceeded: {elapsed:.2f}s > {MAX_SECONDS}s run_id={run_id} hash={content_hash[:8]}"))
+                                st.warning(f"⚠️ Processing exceeded maximum time limit ({elapsed:.1f}s > {MAX_SECONDS}s). Further processing aborted.")
+                                if 'result' in locals() and result is not None:
+                                    # Mark result as incomplete
+                                    pass
+
+                        except Exception as e:
+                            # Fallback to normal processing if page detection fails
+                            print(f"Could not detect page count: {e}. Using normal processing.")
                             print("Phase 1: Starting converter.convert()...")
+                            # Already wrapped in suppress_pdf_noise_for_non_pdf above
                             result = converter.convert(tmp_file_path)
                             print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
-                        
-                        # Guardrail: Check MAX_SECONDS limit
-                        elapsed = time.time() - start_time
-                        if elapsed > MAX_SECONDS:
-                            extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": elapsed}
-                            logging.warning(_scrub_secrets(f"WARNING - MAX_SECONDS exceeded: {elapsed:.2f}s > {MAX_SECONDS}s run_id={run_id} hash={content_hash[:8]}"))
-                            st.warning(f"⚠️ Processing exceeded maximum time limit ({elapsed:.1f}s > {MAX_SECONDS}s). Further processing aborted.")
-                            if 'result' in locals() and result is not None:
-                                # Mark result as incomplete
-                                pass
-
-                    except Exception as e:
-                        # Fallback to normal processing if page detection fails
-                        print(f"Could not detect page count: {e}. Using normal processing.")
-                        print("Phase 1: Starting converter.convert()...")
-                        # Already wrapped in suppress_pdf_noise_for_non_pdf above
-                        result = converter.convert(tmp_file_path)
-                        print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
-                        
-                        # Guardrail: Check MAX_SECONDS limit after fallback
-                        elapsed = time.time() - start_time
-                        if elapsed > MAX_SECONDS:
-                            extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": elapsed}
-                            logging.warning(_scrub_secrets(f"WARNING - MAX_SECONDS exceeded: {elapsed:.2f}s > {MAX_SECONDS}s run_id={run_id} hash={content_hash[:8]}"))
-                            st.warning(f"⚠️ Processing exceeded maximum time limit ({elapsed:.1f}s > {MAX_SECONDS}s). Further processing aborted.")
+                            
+                            # Guardrail: Check MAX_SECONDS limit after fallback
+                            elapsed = time.time() - start_time
+                            if elapsed > MAX_SECONDS:
+                                extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": elapsed}
+                                logging.warning(_scrub_secrets(f"WARNING - MAX_SECONDS exceeded: {elapsed:.2f}s > {MAX_SECONDS}s run_id={run_id} hash={content_hash[:8]}"))
+                                st.warning(f"⚠️ Processing exceeded maximum time limit ({elapsed:.1f}s > {MAX_SECONDS}s). Further processing aborted.")
+                finally:
+                    # Remove root PDF noise filter
+                    if should_suppress:
+                        try:
+                            root_logger_for_noise.removeFilter(_pdf_noise_filter)
+                        except Exception:
+                            pass
         finally:
-            # Always remove log handler and filter after conversion (even on error)
+            # Always remove log handler and filters after conversion (even on error)
             try:
                 docling_logger.removeHandler(metrics_handler)
                 docling_logger.removeFilter(osd_filter)
+                root_logger.removeFilter(osd_filter)
+                # Remove root PDF noise filter if it was added
+                try:
+                    root_logger.removeFilter(_pdf_noise_filter)
+                except Exception:
+                    pass
             except Exception:
                 pass
         
@@ -1632,6 +1694,9 @@ if uploaded_file is not None:
         # Extract comprehensive metrics
         metrics = _extract_document_metrics(result if 'result' in locals() and result is not None else None, markdown_output, fmt, process_seconds, extras)
         
+        # Add OSD_COLLAPSED note if suppression was active
+        _add_osd_collapsed_note(metrics, extras)
+        
         # Add correlation IDs to metrics for MongoDB storage
         metrics["run_id"] = run_id
         metrics["content_hash"] = content_hash
@@ -1664,7 +1729,8 @@ if uploaded_file is not None:
                 logging.warning(_scrub_secrets(f"PPTX: WMF graphic skipped (WMF_LOADER_MISSING) run_id={run_id} hash={content_hash[:8]}"))
             if osd_fails > 0:
                 if extras.get("osd_suppressed_after_first"):
-                    logging.warning(_scrub_secrets(f"PDF: OSD suppressed after first failure on page 0 (OSD_FAIL_COLLAPSED) run_id={run_id} hash={content_hash[:8]}"))
+                    # Only log collapsed summary, not individual failures (filter handles suppression)
+                    logging.warning(_scrub_secrets(f"PDF: OSD suppressed after first failure (OSD_FAIL_COLLAPSED) run_id={run_id} hash={content_hash[:8]}"))
                 else:
                     logging.warning(_scrub_secrets(f"PDF: OSD failures detected: {osd_fails} (OSD_FAIL) run_id={run_id} hash={content_hash[:8]}"))
             if md_len < 500:

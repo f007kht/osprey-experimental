@@ -426,14 +426,21 @@ Control QA features and guardrails via environment variables:
 
 **Guardrails**: Documents exceeding `QA_MAX_PAGES` or `QA_MAX_SECONDS` are gracefully aborted with `status.abort.reason` set to `MAX_PAGES` or `MAX_SECONDS`. The quality bucket is set to `suspect` and processing stops to prevent resource exhaustion.
 
-**PDF Noise Suppression**: For non-PDF files (PPTX, XLSX, DOCX), PDF library probes can emit false warnings ("invalid pdf header: b'PK...", "EOF marker not found"). These are automatically suppressed at the logger level when `QA_FLAG_ENABLE_PDF_WARNING_SUPPRESS=1` (default). Format detection via magic bytes happens first, ensuring PDF code paths are not triggered for Office documents.
+**PDF Noise Suppression**: For non-PDF files (PPTX, XLSX, DOCX), PDF library probes can emit false warnings ("invalid pdf header: b'PK...", "EOF marker not found"). These are automatically suppressed at the logger level when `QA_FLAG_ENABLE_PDF_WARNING_SUPPRESS=1` (default). 
 
-**OSD Collapse for Text-Layer PDFs**: When a PDF has a text layer detected (`text_layer_detected=True`), OCR and OSD are disabled. If OSD errors still occur (e.g., on page 0 cover tiles), they are collapsed after the first failure:
-- All OSD failures are counted in `warnings.osd_fail_count`
-- Only the first OSD error on page 0 is logged
-- Subsequent OSD errors are suppressed (QA log shows `osd_collapsed=1`)
+- Pre-sniff on raw bytes (`_looks_like_office_zip()`) happens before any Docling format detection/probe
+- Suppression wraps the entire conversion process, including Docling's format detection step
+- Filters are attached to both PDF-related loggers (pdfminer, pypdf, docling) and root logger for comprehensive coverage
+- Format detection via magic bytes happens first, ensuring PDF code paths are not triggered for Office documents
+
+**OSD Collapse for Text-Layer PDFs**: When a PDF has a text layer detected (`text_layer_detected=True`), OCR and OSD are disabled at the source (pipeline options). If OSD errors still occur (e.g., on page 0 cover tiles), they are collapsed using per-document filtering:
+- OSD/OCR disabled at pipeline level: `ocr="none"`, `osd=False`, `tesseract_osd=False`
+- Per-document OSD filter matches by temp filename for interleaving safety (handles concurrent conversions)
+- All OSD failures are counted in `warnings.osd_fail_count` (MetricsLogHandler tracks all)
+- Only the first OSD error per document is logged
+- Subsequent OSD errors for the same document are suppressed (QA log shows `osd_collapsed=1`)
 - A single summary warning is emitted: `OSD_FAIL_COLLAPSED`
-- Quality bucket remains `ok` but `status.notes` includes `OSD_FAILS_ON_TEXTLAYER` for dashboard filtering
+- Quality bucket remains `ok` but `status.notes` includes both `OSD_FAILS_ON_TEXTLAYER` and `OSD_COLLAPSED` for dashboard filtering
 
 ### Correlation IDs
 
