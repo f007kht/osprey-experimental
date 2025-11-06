@@ -47,11 +47,24 @@ st.set_page_config(page_title="QA Dashboard", layout="wide")
 st.title("📊 QA Dashboard")
 st.write("Monitor document conversion quality metrics and statistics")
 
+# Check MongoDB availability first
+if not PYMONGO_AVAILABLE:
+    st.warning("⚠️ pymongo not available. Install with: `pip install pymongo[srv]`")
+    st.stop()
+
+if not app_config.enable_mongodb:
+    st.warning("⚠️ MongoDB is disabled. Enable it in app configuration.")
+    st.stop()
+
+# Get MongoDB configuration (needed for configuration display)
+connection_string = app_config.mongodb_connection_string
+database_name = app_config.mongodb_database
+collection_name = app_config.mongodb_collection
+
 # Show active feature flags and guardrail limits
 st.subheader("⚙️ Configuration")
 col_flag1, col_flag2, col_flag3, col_flag4 = st.columns(4)
 
-import os
 qa_flags = {
     "PDF Warning Suppress": os.getenv("QA_FLAG_ENABLE_PDF_WARNING_SUPPRESS", "1") == "1",
     "Text Layer Detect": os.getenv("QA_FLAG_ENABLE_TEXT_LAYER_DETECT", "1") == "1",
@@ -82,19 +95,6 @@ with col_flag4:
     st.caption("Quick Actions")
     if st.button("🔄 Refresh"):
         st.rerun()
-
-# Check MongoDB availability
-if not PYMONGO_AVAILABLE:
-    st.warning("⚠️ pymongo not available. Install with: `pip install pymongo[srv]`")
-    st.stop()
-
-if not app_config.enable_mongodb:
-    st.warning("⚠️ MongoDB is disabled. Enable it in app configuration.")
-    st.stop()
-
-connection_string = app_config.mongodb_connection_string
-database_name = app_config.mongodb_database
-collection_name = app_config.mongodb_collection
 
 if not connection_string:
     st.warning("⚠️ MongoDB connection string not configured.")
