@@ -333,6 +333,202 @@ git push huggingface main --force
 
 **Note**: Manual sync should only be done in emergencies. The automated workflow handles all normal synchronization.
 
+## Quality Assurance & Testing
+
+### Running Tests
+
+The project includes comprehensive quality gates and testing infrastructure:
+
+#### Unit Tests
+
+Run the quality gates unit tests:
+
+```bash
+make test
+# or
+pytest -q tests/test_quality_gates.py
+```
+
+#### Smoke Tests
+
+Run smoke tests on sample files to verify conversion pipeline:
+
+```bash
+make smoke
+# or
+python scripts/smoke_run.py
+```
+
+**Note**: Add sample files to `smoke/` directory first:
+- `sample.pdf` - PDF with text layer
+- `scan_cover.pdf` - Scanned PDF (image only)
+- `sample.pptx` - PowerPoint with WMF image placeholder
+- `sample.xlsx` - Excel file with table
+
+#### Backfill Script
+
+Backfill existing MongoDB documents with missing quality metrics:
+
+```bash
+make backfill
+# or
+MONGODB_CONNECTION_STRING='mongodb+srv://...' python scripts/backfill_min_metrics.py
+```
+
+This adds minimal default values for missing fields:
+- `input`, `metrics`, `warnings`, `ocr`, `status`
+- `text_layer_detected`, `rasterized_graphics_skipped`
+- `schema_version=1` (for existing docs)
+
+### QA Dashboard
+
+Access the QA Dashboard in Streamlit:
+
+1. Start the Streamlit app: `streamlit run app.py`
+2. Navigate to the "QA Dashboard" page in the sidebar
+3. View quality metrics, statistics, and suspect documents
+
+The dashboard shows:
+- **Overview**: Total documents, format counts, quality bucket distribution
+- **Format Breakdown**: Documents by input format
+- **Processing Time Statistics**: Average/min/max processing times by format
+- **Suspect Documents**: Filterable table of documents with quality issues
+
+**Note**: The dashboard requires MongoDB to be enabled and configured. It fails gracefully if MongoDB is unavailable.
+
+### Normalized Warning Codes
+
+The system logs normalized warning codes for easier monitoring:
+
+| Code | Meaning |
+|------|---------|
+| `FORMAT_CONFLICT` | Magic bytes and file extension conflict |
+| `WMF_LOADER_MISSING` | WMF/EMF graphics cannot be loaded (PPTX) |
+| `OSD_FAIL` | Orientation and script detection failed (PDF) |
+| `SHORT_MD` | Markdown output is very short (< 500 chars) |
+| `OVERSIZE` | Markdown output exceeds 2M characters (runaway duplication) |
+
+### Feature Flags & Guardrails
+
+Control QA features and guardrails via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `QA_FLAG_ENABLE_PDF_WARNING_SUPPRESS` | `1` | Suppress PDF warnings for non-PDF files |
+| `QA_FLAG_ENABLE_TEXT_LAYER_DETECT` | `1` | Enable PDF text layer detection |
+| `QA_FLAG_LOG_NORMALIZED_CODES` | `1` | Log normalized warning codes |
+| `QA_SCHEMA_VERSION` | `2` | Schema version for stored documents |
+| `QA_MAX_PAGES` | `500` | Maximum pages per document (aborts if exceeded) |
+| `QA_MAX_SECONDS` | `300` | Maximum processing time in seconds (aborts if exceeded) |
+
+**Guardrails**: Documents exceeding `QA_MAX_PAGES` or `QA_MAX_SECONDS` are gracefully aborted with `status.abort.reason` set to `MAX_PAGES` or `MAX_SECONDS`. The quality bucket is set to `suspect` and processing stops to prevent resource exhaustion.
+
+### Correlation IDs
+
+Every document conversion generates correlation IDs for log ↔ Mongo joinability:
+
+- **`run_id`**: Unique UUID per conversion run (included in all QA log lines)
+- **`content_hash`**: SHA256 hash of file content (for idempotent upserts)
+
+**Pivoting from QA logs to MongoDB**:
+1. Extract `run_id` or `content_hash` (first 8 chars) from QA log line
+2. Query MongoDB: `db.documents.find({"run_id": "..."})` or `db.documents.find({"content_hash": /^.../})`
+3. View full document metrics, warnings, and status
+
+Example QA log line:
+```
+QA: format=PDF pages=5 md=1234 osd_fails=0 wmf_skipped=0 tlayer=true bucket=ok sec=2.45 run_id=abc12345 hash=def67890
+```
+
+### Idempotent Storage
+
+Documents are stored using **idempotent upsert** by `content_hash + filename`. Reprocessing the same file (same SHA256) updates the existing document instead of creating duplicates. This prevents duplicate storage when files are reprocessed.
+
+### MongoDB Indexes
+
+Create indexes for observability:
+
+```bash
+mongosh <connection_string> < db/indexes.js
+```
+
+Indexes created:
+- `input.format` - Format-based queries
+- `status.quality_bucket` - Quality bucket filtering
+- `warnings.osd_fail_count` - OSD failure tracking
+- `metrics.process_seconds` - Processing time analysis
+- `metrics.page_count` - Page count queries
+- `metrics.markdown_length` - Markdown size analysis
+
+### Aggregation Pipelines
+
+Pre-built aggregation pipelines are available in `db/aggregations/quality_dashboards.json`:
+
+- **by_format_error_rates**: Error/warning rates by input format
+- **suspect_docs_sample**: Sample suspect documents
+- **throughput_stats**: p50/p90 processing times by format
+- **markdown_density**: Markdown per page percentiles by format
+
+### Alerting System
+
+Monitor quality metrics and receive push alerts when thresholds are breached:
+
+```bash
+make alerts
+# or
+python scripts/alerts_watch.py
+```
+
+**Alert Configuration** (environment variables):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ALERT_INTERVAL_SECONDS` | `300` | Check interval in seconds (5 minutes) |
+| `ALERT_SUSPECT_RATE` | `0.2` | Suspect rate threshold (20% by format) |
+| `ALERT_OSD_SPIKE_MULT` | `3.0` | OSD spike multiplier (1h mean > 24h mean × N) |
+| `ALERT_MD_P10_DROP` | `100` | Markdown density drop threshold (chars/page) |
+| `ALERT_WEBHOOK_URL` | - | Webhook URL for POST JSON alerts (e.g., Slack) |
+| `ALERT_EMAIL_TO` | - | Email address for SMTP alerts |
+| `ALERT_SMTP_HOST` | - | SMTP server hostname |
+| `ALERT_SMTP_PORT` | `587` | SMTP server port |
+| `ALERT_SMTP_USER` | - | SMTP username |
+| `ALERT_SMTP_PASS` | - | SMTP password |
+
+**Alert Checks**:
+- **Suspect Rate**: Format-specific suspect rate > threshold (last 24h)
+- **OSD Spike**: Mean OSD failures in last 1h > 24h mean × multiplier
+- **Markdown Density Drop**: p10 markdown/page in last 1h < (24h p10 - threshold)
+
+Alerts include top 5 offending documents with `run_id` and `filename` for triage.
+
+**Example Webhook Alert** (Slack):
+```json
+{
+  "timestamp": "2025-11-06T14:30:00",
+  "breaches": [
+    {
+      "check": "suspect_rate",
+      "threshold": 0.2,
+      "breaches": [
+        {"format": "pdf", "rate": 0.35, "suspect": 7, "total": 20}
+      ]
+    }
+  ],
+  "top_offenders": [
+    {"run_id": "abc12345", "filename": "problem.pdf", "format": "pdf", "bucket": "suspect"}
+  ]
+}
+```
+
+### Secret Scrubbing
+
+All log messages are automatically scrubbed to remove secrets:
+- MongoDB connection strings: `mongodb+srv://***:***@host` 
+- File system paths with credentials
+- Any URI patterns with embedded credentials
+
+This prevents accidental credential exposure in logs.
+
 ## License
 
 Confidential - Osprey_Intel_LLC

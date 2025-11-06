@@ -63,7 +63,14 @@ if health_param in ("1", "true", "True"):
 # Now import heavy dependencies (after health check)
 import tempfile
 import signal
-from typing import Optional, List, Dict, Any
+import time
+import warnings
+import io
+import hashlib
+import uuid
+import re
+from contextlib import contextmanager
+from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 
 # CRITICAL: Remove DOCLING_ARTIFACTS_PATH BEFORE importing docling modules
@@ -121,6 +128,33 @@ else:
 # Feature flags from settings
 ENABLE_DOWNLOADS = app_config.enable_downloads
 ENABLE_MONGODB = app_config.enable_mongodb
+
+# QA feature flags (read once at startup)
+QA_FLAG_ENABLE_PDF_WARNING_SUPPRESS = os.getenv("QA_FLAG_ENABLE_PDF_WARNING_SUPPRESS", "1") == "1"
+QA_FLAG_ENABLE_TEXT_LAYER_DETECT = os.getenv("QA_FLAG_ENABLE_TEXT_LAYER_DETECT", "1") == "1"
+QA_FLAG_LOG_NORMALIZED_CODES = os.getenv("QA_FLAG_LOG_NORMALIZED_CODES", "1") == "1"
+QA_SCHEMA_VERSION = int(os.getenv("QA_SCHEMA_VERSION", "2"))
+
+# Guardrails (configurable via env, with safe defaults)
+MAX_PAGES = int(os.getenv("QA_MAX_PAGES", "500"))
+MAX_SECONDS = float(os.getenv("QA_MAX_SECONDS", "300"))
+
+# Secret scrubbing regex
+SECRET_URI_RE = re.compile(r"(mongodb\+srv://|mongodb://)([^:@/]+):([^@/]+)@")
+
+
+def _scrub_secrets(msg: str) -> str:
+    """Scrub secrets (MongoDB connection strings, etc.) from log messages."""
+    if not msg:
+        return msg
+    return SECRET_URI_RE.sub(r"\1***:***@", msg)
+
+
+def _content_hash(b: bytes) -> str:
+    """Compute SHA256 hash of file content for idempotency."""
+    h = hashlib.sha256()
+    h.update(b or b"")
+    return h.hexdigest()
 
 import streamlit as st
 
@@ -494,39 +528,276 @@ def _generate_embeddings(chunk_texts: List[str], embedding_config: Optional[Dict
         return embeddings.tolist()  # Convert numpy array to list
 
 
-def sniff_file_format(file_path: str) -> Optional[str]:
+# Magic byte signatures for format detection
+MAGIC = {
+    b'%PDF-': 'pdf',
+    b'PK\x03\x04': 'office-zip',  # xlsx/pptx/docx
+}
+
+
+def _ext_to_office(fmt_ext: str) -> Optional[str]:
+    """Extract Office format from file extension."""
+    ext = (fmt_ext or '').lower().strip('.')
+    if ext in ('xlsx',):
+        return 'xlsx'
+    if ext in ('pptx',):
+        return 'pptx'
+    if ext in ('docx',):
+        return 'docx'
+    if ext in ('pdf',):
+        return 'pdf'
+    return None
+
+
+def sniff_file_format(filename: str, first_bytes: bytes) -> Tuple[str, float, bool, Optional[str]]:
     """
-    Detect file format by checking magic number (first 4 bytes).
+    Detect file format using magic bytes and extension.
     
-    This helps identify Office files (XLSX/DOCX/PPTX) that have PK header
-    before they're incorrectly detected as PDF, reducing false warnings.
+    Returns:
+        Tuple of (format, confidence, conflict, ext_guess)
+        - format: Detected format string
+        - confidence: Confidence score 0.0-1.0
+        - conflict: True if magic bytes and extension conflict
+        - ext_guess: Format guessed from extension
+    """
+    mb_guess = None
+    for sig, fmt in MAGIC.items():
+        if first_bytes.startswith(sig):
+            mb_guess = fmt
+            break
+    
+    ext_guess = _ext_to_office(filename.split('.')[-1])
+    
+    # Resolve format
+    if mb_guess == 'pdf':
+        resolved, confidence = 'pdf', 0.95
+    elif mb_guess == 'office-zip':
+        resolved = ext_guess or 'office-zip'
+        confidence = 0.9 if ext_guess else 0.7
+    else:
+        resolved = ext_guess or 'unknown'
+        confidence = 0.5 if ext_guess else 0.1
+    
+    # Check for conflict
+    conflict = (mb_guess is not None and ext_guess is not None and
+                not ((mb_guess == 'pdf' and ext_guess == 'pdf') or
+                     (mb_guess == 'office-zip' and ext_guess in ('xlsx', 'pptx', 'docx'))))
+    
+    # Special case: if magic-bytes says office-zip and extension is unknown, set conflict flag
+    if mb_guess == 'office-zip' and ext_guess is None:
+        conflict = True
+    
+    return resolved, confidence, conflict, ext_guess
+
+
+@contextmanager
+def suppress_pdf_warnings_for_non_pdf(active: bool):
+    """
+    Context manager to suppress PDF header/EOF warnings for non-PDF files.
     
     Args:
-        file_path: Path to the file to check
+        active: If True, suppress warnings; if False, pass through unchanged
+    """
+    if not active:
+        yield
+        return
+    
+    # NOTE: scope-limited; restores automatically
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=r"invalid pdf header: b'PK\\x03\\x04\\x14'")
+        warnings.filterwarnings("ignore", message=r"EOF marker not found")
+        yield
+
+
+def _handle_wmf_graphics(log_line: str, metrics: dict):
+    """
+    Track WMF/EMF graphics that cannot be loaded.
+    
+    Args:
+        log_line: Log line to check for WMF/EMF warnings
+        metrics: Metrics dictionary to update
+    """
+    if 'WMF file' in log_line or 'EMF file' in log_line:
+        metrics['rasterized_graphics_skipped'] = metrics.get('rasterized_graphics_skipped', 0) + 1
+        metrics.setdefault('warnings', {}).update({'wmf_missing_loader': True})
+
+
+def _detect_pdf_text_layer(pdf_bytes: bytes, max_pages_check: int = 3) -> Tuple[bool, list]:
+    """
+    Detect if PDF has embedded text layer by checking first few pages.
+    
+    Args:
+        pdf_bytes: PDF file content as bytes
+        max_pages_check: Maximum number of pages to check
         
     Returns:
-        Detected format string ('pdf', 'xlsx', 'docx', 'pptx', 'zip-office', or None)
+        Tuple of (has_text_layer, per_page_flags)
+        - has_text_layer: True if any checked page has text
+        - per_page_flags: List of booleans for each checked page
     """
     try:
-        from pathlib import Path
-        sig = Path(file_path).read_bytes()[:4]
-        
-        if sig.startswith(b"%PDF"):
-            return "pdf"
-        if sig.startswith(b"PK\x03\x04"):
-            # ZIP container - could be Office file
-            low = file_path.lower()
-            if low.endswith(".xlsx"):
-                return "xlsx"
-            if low.endswith(".docx"):
-                return "docx"
-            if low.endswith(".pptx"):
-                return "pptx"
-            return "zip-office"
-        return None
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        flags = []
+        for i, page in enumerate(reader.pages[:max_pages_check]):
+            txt = page.extract_text()
+            # Treat None or whitespace as "no text"; require >=15 visible chars
+            if txt is None or not txt.strip():
+                flags.append(False)
+            else:
+                flags.append(len(txt.strip()) >= 15)
+        return (any(flags), flags)
     except Exception:
-        # If we can't read the file, return None (let docling handle it)
-        return None
+        return (False, [])
+
+
+def _should_disable_ocr_for_page1(osd_fail_count: int) -> bool:
+    """
+    Determine if OCR should be disabled for page 1 after repeated OSD failures.
+    
+    Args:
+        osd_fail_count: Number of OSD failures encountered
+        
+    Returns:
+        True if OCR should be disabled
+    """
+    return osd_fail_count >= 3
+
+
+def _normalize_ocr_engine_name(engine) -> str:
+    """
+    Normalize OCR engine name to a stable string identifier.
+    
+    Args:
+        engine: OCR engine object or name
+        
+    Returns:
+        Normalized engine name string
+    """
+    if not engine:
+        return 'none'
+    name = str(engine).lower()
+    for k in ('tesseract', 'rapidocr', 'easyocr', 'auto'):
+        if k in name:
+            return k
+    return name[:32]
+
+
+def _extract_document_metrics(result, markdown_text: str, fmt: str, process_seconds: float, extras: dict) -> dict:
+    """
+    Extract comprehensive metrics from conversion result.
+    
+    Args:
+        result: ConversionResult from Docling (may be None if aborted)
+        markdown_text: Exported markdown text
+        fmt: Detected input format
+        process_seconds: Processing time in seconds
+        extras: Dictionary with additional metrics (warnings, ocr_engine, etc.)
+        
+    Returns:
+        Dictionary with all metrics organized by category
+    """
+    # Extract page count (null-safe access for schema drift safety)
+    page_count = None
+    if result is not None and hasattr(result, 'document') and result.document:
+        if hasattr(result.document, 'pages') and result.document.pages:
+            page_count = len(result.document.pages)
+        elif hasattr(result.document, 'page_count'):
+            page_count = result.document.page_count
+    
+    d = {
+        "input": {"format": fmt},
+        "metrics": {
+            "page_count": page_count,
+            "markdown_length": len(markdown_text or ""),
+            "process_seconds": round(process_seconds, 3),
+            "block_count": 0,
+            "heading_count": 0,
+            "table_count": 0,
+            "figure_count": 0,
+        },
+        "warnings": {
+            "wmf_missing_loader": extras.get("warnings", {}).get("wmf_missing_loader", False),
+            "osd_fail_count": extras.get("warnings", {}).get("osd_fail_count", 0),
+            "format_conflict": extras.get("warnings", {}).get("format_conflict", False),
+        },
+        "ocr": {
+            "engine_used": extras.get("ocr_engine", "unknown")
+        },
+        "text_layer_detected": extras.get("text_layer_detected", False),
+        "rasterized_graphics_skipped": extras.get("rasterized_graphics_skipped", 0),
+        "status": {"quality_bucket": "ok"},
+    }
+    
+    # Handle abort status (null-safe access)
+    if extras.get("abort"):
+        d["status"]["abort"] = extras["abort"]
+        d["status"]["quality_bucket"] = "suspect"
+    
+    # Try Docling dict export to count structures (null-safe)
+    try:
+        if result is not None and hasattr(result, 'document') and result.document:
+            doc_dict = result.document.export_to_dict()
+            blocks = doc_dict.get('blocks') or []
+            d["metrics"]["block_count"] = len(blocks)
+            d["metrics"]["heading_count"] = sum(1 for b in blocks if b.get('type') in ('heading', 'title', 'h1', 'h2', 'h3'))
+            d["metrics"]["table_count"] = sum(1 for b in blocks if b.get('type') == 'table')
+            d["metrics"]["figure_count"] = sum(1 for b in blocks if b.get('type') in ('figure', 'image', 'picture'))
+    except Exception:
+        # Fallback: attempt best-effort extraction from result.document.blocks
+        try:
+            if result is not None:
+                doc = getattr(result, "document", None)
+                blocks = getattr(doc, "blocks", []) or []
+                if blocks:
+                    d["metrics"]["block_count"] = len(blocks)
+                    # Best-effort type detection if blocks have type attribute
+                    d["metrics"]["heading_count"] = sum(1 for b in blocks if getattr(b, 'type', None) in ('heading', 'title', 'h1', 'h2', 'h3'))
+                    d["metrics"]["table_count"] = sum(1 for b in blocks if getattr(b, 'type', None) == 'table')
+                    d["metrics"]["figure_count"] = sum(1 for b in blocks if getattr(b, 'type', None) in ('figure', 'image', 'picture'))
+        except Exception:
+            pass
+    
+    # Only assign quality bucket if not already set by abort
+    if not d["status"].get("abort"):
+        d["status"]["quality_bucket"] = _assign_quality_bucket(d)
+    return d
+
+
+def _assign_quality_bucket(m: dict) -> str:
+    """
+    Assign quality bucket (ok/suspect/fail) based on metrics.
+    
+    Args:
+        m: Metrics dictionary from _extract_document_metrics
+        
+    Returns:
+        Quality bucket string: "ok", "suspect", or "fail"
+    """
+    md_len = m["metrics"]["markdown_length"]
+    osd_fail = m["warnings"]["osd_fail_count"]
+    tlayer = bool(m.get("text_layer_detected"))
+    wmf = bool(m["warnings"]["wmf_missing_loader"])
+    blocks = m["metrics"]["block_count"]
+    tables = m["metrics"]["table_count"]
+    figures = m["metrics"]["figure_count"]
+    fmt = m["input"]["format"]
+    
+    # Fail: truly empty extract
+    if blocks == 0 and tables == 0 and figures == 0 and md_len == 0:
+        return "fail"
+    
+    # Suspect rules
+    if md_len < 500:
+        return "suspect"
+    if fmt == "pdf" and osd_fail > 10 and not tlayer:
+        return "suspect"
+    if wmf:
+        return "suspect"
+    if md_len > 2_000_000:  # runaway duplication
+        return "suspect"
+    
+    return "ok"
 
 
 def _sanitize_for_mongodb(obj: Any) -> Any:
@@ -586,6 +857,7 @@ def _store_in_mongodb(
     database_name: str,
     collection_name: str,
     embedding_config: Optional[Dict[str, Any]] = None,
+    metrics: Optional[Dict[str, Any]] = None,
     max_retries: int = 3
 ) -> bool:
     """
@@ -700,6 +972,28 @@ def _store_in_mongodb(
                 "use_remote": embedding_config.get("use_remote", False)
             }
         }
+        
+        # Add quality metrics if provided
+        if metrics:
+            primary_doc.update({
+                "input": metrics.get("input", {}),
+                "metrics": metrics.get("metrics", {}),
+                "warnings": metrics.get("warnings", {}),
+                "ocr": metrics.get("ocr", {}),
+                "status": metrics.get("status", {}),
+                "text_layer_detected": metrics.get("text_layer_detected", False),
+                "rasterized_graphics_skipped": metrics.get("rasterized_graphics_skipped", 0),
+                "schema_version": QA_SCHEMA_VERSION,
+            })
+        
+        # Add correlation IDs for log <-> Mongo joinability (from metrics dict if provided)
+        if metrics and isinstance(metrics, dict):
+            run_id = metrics.get("run_id")
+            content_hash = metrics.get("content_hash")
+            if run_id:
+                primary_doc["run_id"] = run_id
+            if content_hash:
+                primary_doc["content_hash"] = content_hash
 
         # Sanitize document for MongoDB BSON compatibility
         primary_doc = _sanitize_for_mongodb(primary_doc)
@@ -742,12 +1036,28 @@ def _store_in_mongodb(
             # Split primary doc from pages
             small_primary, page_docs = split_for_mongo(primary_doc, page_docs_raw)
             
-            # Insert primary document with retry
-            primary_result = retry_with_backoff(
-                lambda: collection.insert_one(small_primary),
-                "primary document insert"
-            )
-            primary_id = primary_result.inserted_id
+            # Idempotent upsert by content_hash + filename (if available)
+            content_hash = small_primary.get("content_hash")
+            filename = small_primary.get("filename")
+            if content_hash and filename:
+                primary_result = retry_with_backoff(
+                    lambda: collection.update_one(
+                        {"content_hash": content_hash, "filename": filename},
+                        {"$set": small_primary},
+                        upsert=True
+                    ),
+                    "primary document upsert"
+                )
+                primary_id = primary_result.upserted_id if primary_result.upserted_id else collection.find_one(
+                    {"content_hash": content_hash, "filename": filename}
+                )["_id"]
+            else:
+                # Fallback to insert if content_hash missing
+                primary_result = retry_with_backoff(
+                    lambda: collection.insert_one(small_primary),
+                    "primary document insert"
+                )
+                primary_id = primary_result.inserted_id
             
             # Insert pages into separate collection (pages collection) with retry
             pages_collection = db[f"{collection_name}_pages"]
@@ -762,11 +1072,24 @@ def _store_in_mongodb(
             result = primary_result
             logging.info(f"Document split: primary ({bson_len(small_primary)} bytes) + {len(page_docs)} pages")
         else:
-            # Document fits in single BSON doc - insert normally with retry
-            result = retry_with_backoff(
-                lambda: collection.insert_one(primary_doc),
-                "document insert"
-            )
+            # Document fits in single BSON doc - idempotent upsert by content_hash + filename
+            content_hash = primary_doc.get("content_hash")
+            filename = primary_doc.get("filename")
+            if content_hash and filename:
+                result = retry_with_backoff(
+                    lambda: collection.update_one(
+                        {"content_hash": content_hash, "filename": filename},
+                        {"$set": primary_doc},
+                        upsert=True
+                    ),
+                    "document upsert"
+                )
+            else:
+                # Fallback to insert if content_hash missing
+                result = retry_with_backoff(
+                    lambda: collection.insert_one(primary_doc),
+                    "document insert"
+                )
         
         # Create vector search index if it doesn't exist
         # Note: Index creation is asynchronous and may take time
@@ -1005,11 +1328,37 @@ if uploaded_file is not None:
         tmp_file.write(uploaded_file.getvalue())
         tmp_file_path = tmp_file.name
 
-    # Sniff file format by magic number to help with logging
-    detected_format = sniff_file_format(tmp_file_path)
-    if detected_format:
-        logging.debug(f"File signature detected: {detected_format} for {uploaded_file.name}")
-
+    # Read first 8 bytes for magic sniffing
+    with open(tmp_file_path, 'rb') as f:
+        first_bytes = f.read(8)
+    
+    # Sniff file format with new signature
+    fmt, confidence, conflict, ext_guess = sniff_file_format(uploaded_file.name, first_bytes)
+    
+    # Generate correlation IDs for log <-> Mongo joinability
+    run_id = str(uuid.uuid4())
+    file_bytes = uploaded_file.getvalue()
+    content_hash = _content_hash(file_bytes)
+    
+    # Initialize extras dict for tracking metrics
+    extras = {
+        "run_id": run_id,
+        "content_hash": content_hash,
+        "warnings": {},
+        "rasterized_graphics_skipped": 0,
+        "text_layer_detected": False,
+        "ocr_engine": "unknown"
+    }
+    
+        # Track format conflict
+    if conflict:
+        extras["warnings"]["format_conflict"] = True
+        # Special logging for office-zip with unknown extension
+        if fmt == "office-zip" and ext_guess is None:
+            logging.warning(_scrub_secrets(f"WARNING - FORMAT_CONFLICT: magic=office-zip ext=unknown filename={uploaded_file.name} run_id={run_id} hash={content_hash[:8]}"))
+        else:
+            logging.warning(_scrub_secrets(f"Format conflict detected: magic bytes vs extension (FORMAT_CONFLICT) run_id={run_id} hash={content_hash[:8]}"))
+    
     st.info(f"Processing `{uploaded_file.name}`... This might take a moment.")
 
     try:
@@ -1023,49 +1372,148 @@ if uploaded_file is not None:
                 enable_code_enrichment=st.session_state.get("enable_code_enrichment", False),
                 enable_picture_classification=st.session_state.get("enable_picture_classification", False)
             )
+        
+        # For PDF files, detect text layer and configure OCR accordingly
+        if fmt == "pdf" and QA_FLAG_ENABLE_TEXT_LAYER_DETECT:
+            pdf_bytes = uploaded_file.getvalue()
+            has_text_layer, page_flags = _detect_pdf_text_layer(pdf_bytes)
+            if has_text_layer:
+                extras["text_layer_detected"] = True
+                logging.info("PDF text layer detected - OCR may be skipped for pages with text")
+        
+        # Track OSD failures and WMF warnings by intercepting log messages
+        osd_fail_count = 0
+        
+        # Custom log handler to intercept WMF/OSD warnings
+        # NOTE: Handler is attached per conversion and always detached in finally block
+        class MetricsLogHandler(logging.Handler):
+            def __init__(self, extras_dict):
+                super().__init__()
+                self.extras = extras_dict
+                # Reset counters per run to avoid cross-doc leakage
+                self.extras.setdefault("warnings", {})["osd_fail_count"] = 0
+                
+            def emit(self, record):
+                msg = self.format(record)
+                # Scrub secrets from log messages
+                msg_scrubbed = _scrub_secrets(msg)
+                # Track WMF/EMF warnings
+                if 'WMF' in msg_scrubbed or 'EMF' in msg_scrubbed or 'cannot be loaded by Pillow' in msg_scrubbed:
+                    _handle_wmf_graphics(msg_scrubbed, self.extras)
+                # Track OSD failures (atomic increment)
+                if 'OSD failed' in msg_scrubbed:
+                    warnings_dict = self.extras.setdefault("warnings", {})
+                    warnings_dict["osd_fail_count"] = warnings_dict.get("osd_fail_count", 0) + 1
+        
+        # Add log handler for metrics tracking
+        metrics_handler = MetricsLogHandler(extras)
+        metrics_handler.setLevel(logging.WARNING)
+        # Get docling loggers
+        docling_logger = logging.getLogger('docling')
+        docling_logger.addHandler(metrics_handler)
+        
+        try:
+            # Run the conversion process
+            with st.spinner(f"Converting `{uploaded_file.name}`..."):
+                start_time = time.time()
+                print(f"\n{'='*60}")
+                print(f"CONVERSION START: {uploaded_file.name}")
+                print(f"{'='*60}")
 
-        # Run the conversion process
-        with st.spinner(f"Converting `{uploaded_file.name}`..."):
-            import time
-            start_time = time.time()
-            print(f"\n{'='*60}")
-            print(f"CONVERSION START: {uploaded_file.name}")
-            print(f"{'='*60}")
+                # Suppress PDF warnings for non-PDF files (if flag enabled)
+                should_suppress = QA_FLAG_ENABLE_PDF_WARNING_SUPPRESS and fmt in ('xlsx', 'pptx', 'docx', 'office-zip')
+                
+                # Option B: Detect document size and use chunked processing for large documents
+                # This prevents the 127-page stopping issue by processing in manageable chunks
+                try:
+                    from pypdf import PdfReader
+                    pdf_reader = PdfReader(tmp_file_path)
+                    total_pages = len(pdf_reader.pages)
+                    print(f"Document has {total_pages} pages")
 
-            # Option B: Detect document size and use chunked processing for large documents
-            # This prevents the 127-page stopping issue by processing in manageable chunks
-            try:
-                from pypdf import PdfReader
-                pdf_reader = PdfReader(tmp_file_path)
-                total_pages = len(pdf_reader.pages)
-                print(f"Document has {total_pages} pages")
+                    # Guardrail: Check MAX_PAGES limit
+                    if total_pages > MAX_PAGES:
+                        extras["abort"] = {"reason": "MAX_PAGES", "limit": MAX_PAGES, "actual": total_pages}
+                        logging.warning(_scrub_secrets(f"WARNING - MAX_PAGES exceeded: {total_pages} > {MAX_PAGES} run_id={run_id} hash={content_hash[:8]}"))
+                        st.warning(f"⚠️ Document exceeds maximum page limit ({total_pages} > {MAX_PAGES} pages). Processing aborted.")
+                        # Create a minimal result stub for metrics extraction
+                        result = None
+                    # For documents > 120 pages, process in chunks to avoid memory/timeout issues
+                    elif total_pages > 120:
+                        MAX_PAGES_PER_CHUNK = 120
+                        st.warning(f"⚠️ Large document detected ({total_pages} pages). Processing in chunks of {MAX_PAGES_PER_CHUNK} pages for stability.")
+                        print(f"Large document: processing first {MAX_PAGES_PER_CHUNK} pages of {total_pages}")
 
-                # For documents > 120 pages, process in chunks to avoid memory/timeout issues
-                MAX_PAGES_PER_CHUNK = 120
-                if total_pages > MAX_PAGES_PER_CHUNK:
-                    st.warning(f"⚠️ Large document detected ({total_pages} pages). Processing in chunks of {MAX_PAGES_PER_CHUNK} pages for stability.")
-                    print(f"Large document: processing first {MAX_PAGES_PER_CHUNK} pages of {total_pages}")
+                        # Track conversion phases
+                        print(f"Phase 1: Starting converter.convert() with page_range=(1, {MAX_PAGES_PER_CHUNK})...")
+                        with suppress_pdf_warnings_for_non_pdf(should_suppress):
+                            result = converter.convert(tmp_file_path, page_range=(1, MAX_PAGES_PER_CHUNK))
+                        print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
 
-                    # Track conversion phases
-                    print(f"Phase 1: Starting converter.convert() with page_range=(1, {MAX_PAGES_PER_CHUNK})...")
-                    result = converter.convert(tmp_file_path, page_range=(1, MAX_PAGES_PER_CHUNK))
-                    print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+                        st.info(f"✓ Processed first {MAX_PAGES_PER_CHUNK} pages. Additional chunks can be processed separately.")
+                    else:
+                        # Normal processing for documents <= 120 pages
+                        print("Phase 1: Starting converter.convert()...")
+                        with suppress_pdf_warnings_for_non_pdf(should_suppress):
+                            result = converter.convert(tmp_file_path)
+                        print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+                    
+                    # Guardrail: Check MAX_SECONDS limit
+                    elapsed = time.time() - start_time
+                    if elapsed > MAX_SECONDS:
+                        extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": elapsed}
+                        logging.warning(_scrub_secrets(f"WARNING - MAX_SECONDS exceeded: {elapsed:.2f}s > {MAX_SECONDS}s run_id={run_id} hash={content_hash[:8]}"))
+                        st.warning(f"⚠️ Processing exceeded maximum time limit ({elapsed:.1f}s > {MAX_SECONDS}s). Further processing aborted.")
+                        if 'result' in locals() and result is not None:
+                            # Mark result as incomplete
+                            pass
 
-                    st.info(f"✓ Processed first {MAX_PAGES_PER_CHUNK} pages. Additional chunks can be processed separately.")
-                else:
-                    # Normal processing for documents <= 120 pages
+                except Exception as e:
+                    # Fallback to normal processing if page detection fails
+                    print(f"Could not detect page count: {e}. Using normal processing.")
                     print("Phase 1: Starting converter.convert()...")
-                    result = converter.convert(tmp_file_path)
+                    with suppress_pdf_warnings_for_non_pdf(should_suppress):
+                        result = converter.convert(tmp_file_path)
                     print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+                    
+                    # Guardrail: Check MAX_SECONDS limit after fallback
+                    elapsed = time.time() - start_time
+                    if elapsed > MAX_SECONDS:
+                        extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": elapsed}
+                        logging.warning(_scrub_secrets(f"WARNING - MAX_SECONDS exceeded: {elapsed:.2f}s > {MAX_SECONDS}s run_id={run_id} hash={content_hash[:8]}"))
+                        st.warning(f"⚠️ Processing exceeded maximum time limit ({elapsed:.1f}s > {MAX_SECONDS}s). Further processing aborted.")
+        finally:
+            # Always remove log handler after conversion (even on error)
+            try:
+                docling_logger.removeHandler(metrics_handler)
+            except Exception:
+                pass
+        
+        # Count OSD failures from result errors (backup count)
+        if 'result' in locals() and hasattr(result, 'errors') and result.errors:
+            for error in result.errors:
+                error_msg = str(error.error_message) if hasattr(error, 'error_message') else str(error)
+                if 'OSD failed' in error_msg or 'osd' in error_msg.lower():
+                    osd_fail_count += 1
+                # Track WMF/EMF warnings from errors (backup)
+                if 'WMF' in error_msg or 'EMF' in error_msg or 'cannot be loaded by Pillow' in error_msg:
+                    _handle_wmf_graphics(error_msg, extras)
+        
+        # Use the count from log handler (which may be more accurate)
+        # Fall back to error count if log handler didn't catch any
+        final_osd_count = extras.get("warnings", {}).get("osd_fail_count", 0)
+        if final_osd_count == 0 and osd_fail_count > 0:
+            extras.setdefault("warnings", {})["osd_fail_count"] = osd_fail_count
+        
+        # Normalize OCR engine name
+        if 'result' in locals() and hasattr(converter, 'format_options') and fmt == "pdf":
+            pdf_format = converter.format_options.get(InputFormat.PDF)
+            if pdf_format and hasattr(pdf_format, 'pipeline_options'):
+                ocr_opts = pdf_format.pipeline_options.ocr_options
+                extras["ocr_engine"] = _normalize_ocr_engine_name(ocr_opts)
 
-            except Exception as e:
-                # Fallback to normal processing if page detection fails
-                print(f"Could not detect page count: {e}. Using normal processing.")
-                print("Phase 1: Starting converter.convert()...")
-                result = converter.convert(tmp_file_path)
-                print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
-
-            # Check result object
+        # Check result object
+        if 'result' in locals():
             print(f"Phase 2: Checking result object...")
             print(f"  - result type: {type(result)}")
             print(f"  - has document: {hasattr(result, 'document')}")
@@ -1076,21 +1524,73 @@ if uploaded_file is not None:
                     print(f"  - total pages: {len(result.document.pages)}")
             print(f"Phase 2 complete in {time.time() - start_time:.2f}s")
 
+        process_seconds = time.time() - start_time
         print(f"\n{'='*60}")
-        print(f"CONVERSION COMPLETE: Total time {time.time() - start_time:.2f}s")
+        print(f"CONVERSION COMPLETE: Total time {process_seconds:.2f}s")
         print(f"{'='*60}\n")
 
-        st.success("Document processed successfully!")
+        # Check if processing was aborted
+        if extras.get("abort"):
+            st.warning(f"⚠️ Processing aborted: {extras['abort']['reason']}")
+        else:
+            st.success("Document processed successfully!")
 
         # 3. Display the results
         st.subheader("Extracted Content (Markdown)")
 
-        # Export the document's content to Markdown
-        print("Phase 3: Exporting to markdown...")
-        export_start = time.time()
-        markdown_output = result.document.export_to_markdown()
-        print(f"Phase 3 complete: export_to_markdown() in {time.time() - export_start:.2f}s")
-        print(f"  - Markdown length: {len(markdown_output)} characters")
+        # Export the document's content to Markdown (if not aborted)
+        if 'result' in locals() and result is not None and hasattr(result, 'document'):
+            print("Phase 3: Exporting to markdown...")
+            export_start = time.time()
+            # Check time limit before export
+            if time.time() - start_time > MAX_SECONDS:
+                extras["abort"] = {"reason": "MAX_SECONDS", "limit": MAX_SECONDS, "actual": time.time() - start_time}
+                markdown_output = ""
+            else:
+                markdown_output = result.document.export_to_markdown()
+                print(f"Phase 3 complete: export_to_markdown() in {time.time() - export_start:.2f}s")
+                print(f"  - Markdown length: {len(markdown_output)} characters")
+        else:
+            markdown_output = ""
+        
+        # Extract comprehensive metrics
+        metrics = _extract_document_metrics(result if 'result' in locals() and result is not None else None, markdown_output, fmt, process_seconds, extras)
+        
+        # Add correlation IDs to metrics for MongoDB storage
+        metrics["run_id"] = run_id
+        metrics["content_hash"] = content_hash
+        
+        # Markdown runaway guard: check before storing
+        if metrics["metrics"]["markdown_length"] > 2_000_000:
+            metrics["status"]["quality_bucket"] = "suspect"
+            logging.warning(_scrub_secrets(f"WARNING - OVERSIZE: markdown_length={metrics['metrics']['markdown_length']} exceeds 2M chars run_id={run_id} hash={content_hash[:8]}"))
+        
+        # Log structured QA line with correlation IDs
+        page_count = metrics["metrics"].get("page_count", "?")
+        md_len = metrics["metrics"]["markdown_length"]
+        osd_fails = metrics["warnings"]["osd_fail_count"]
+        wmf_skipped = metrics.get("rasterized_graphics_skipped", 0)
+        tlayer = metrics.get("text_layer_detected", False)
+        bucket = metrics["status"]["quality_bucket"]
+        abort_reason = metrics["status"].get("abort", {}).get("reason", "") if metrics["status"].get("abort") else ""
+        
+        logging.info(_scrub_secrets(
+            f"QA: format={fmt.upper()} pages={page_count} md={md_len} "
+            f"osd_fails={osd_fails} wmf_skipped={wmf_skipped} tlayer={tlayer} "
+            f"bucket={bucket} sec={process_seconds:.2f} run_id={run_id} hash={content_hash[:8]}"
+            + (f" abort={abort_reason}" if abort_reason else "")
+        ))
+        
+        # Log normalized warning codes (if flag enabled)
+        if QA_FLAG_LOG_NORMALIZED_CODES:
+            if metrics["warnings"].get("wmf_missing_loader"):
+                logging.warning(_scrub_secrets(f"PPTX: WMF graphic skipped (WMF_LOADER_MISSING) run_id={run_id} hash={content_hash[:8]}"))
+            if osd_fails > 0:
+                logging.warning(_scrub_secrets(f"PDF: OSD failures detected: {osd_fails} (OSD_FAIL) run_id={run_id} hash={content_hash[:8]}"))
+            if md_len < 500:
+                logging.warning(_scrub_secrets(f"Document: Short markdown output: {md_len} chars (SHORT_MD) run_id={run_id} hash={content_hash[:8]}"))
+            if metrics["warnings"].get("format_conflict"):
+                logging.warning(_scrub_secrets(f"Document: Format conflict detected (FORMAT_CONFLICT) run_id={run_id} hash={content_hash[:8]}"))
 
         # Display the Markdown in the app.
         # We use a text_area for long outputs, but st.markdown() also works.
@@ -1243,7 +1743,8 @@ if uploaded_file is not None:
                                         mongodb_connection_string=st.session_state.get("mongodb_connection_string", ""),
                                         database_name=st.session_state.get("mongodb_database", "docling_db"),
                                         collection_name=st.session_state.get("mongodb_collection", "documents"),
-                                        embedding_config=embedding_config
+                                        embedding_config=embedding_config,
+                                        metrics=metrics
                                     )
                                     
                                     storage_time = time.time() - storage_start_time

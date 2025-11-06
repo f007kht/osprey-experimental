@@ -1,0 +1,175 @@
+[
+  {
+    "name": "by_format_error_rates",
+    "description": "Error/warning rates by input.format",
+    "pipeline": [
+      {
+        "$group": {
+          "_id": "$input.format",
+          "total_docs": {"$sum": 1},
+          "suspect_count": {
+            "$sum": {"$cond": [{"$eq": ["$status.quality_bucket", "suspect"]}, 1, 0]}
+          },
+          "fail_count": {
+            "$sum": {"$cond": [{"$eq": ["$status.quality_bucket", "fail"]}, 1, 0]}
+          },
+          "osd_fail_sum": {"$sum": "$warnings.osd_fail_count"},
+          "wmf_missing_count": {
+            "$sum": {"$cond": [{"$eq": ["$warnings.wmf_missing_loader", true]}, 1, 0]}
+          },
+          "format_conflict_count": {
+            "$sum": {"$cond": [{"$eq": ["$warnings.format_conflict", true]}, 1, 0]}
+          }
+        }
+      },
+      {
+        "$project": {
+          "format": "$_id",
+          "total_docs": 1,
+          "suspect_count": 1,
+          "fail_count": 1,
+          "suspect_rate": {
+            "$cond": [
+              {"$eq": ["$total_docs", 0]},
+              0,
+              {"$divide": ["$suspect_count", "$total_docs"]}
+            ]
+          },
+          "fail_rate": {
+            "$cond": [
+              {"$eq": ["$total_docs", 0]},
+              0,
+              {"$divide": ["$fail_count", "$total_docs"]}
+            ]
+          },
+          "osd_fail_sum": 1,
+          "wmf_missing_count": 1,
+          "format_conflict_count": 1,
+          "_id": 0
+        }
+      },
+      {
+        "$sort": {"total_docs": -1}
+      }
+    ]
+  },
+  {
+    "name": "suspect_docs_sample",
+    "description": "Sample 'suspect' documents",
+    "pipeline": [
+      {
+        "$match": {
+          "status.quality_bucket": "suspect"
+        }
+      },
+      {
+        "$project": {
+          "filename": 1,
+          "input.format": 1,
+          "metrics.markdown_length": 1,
+          "metrics.page_count": 1,
+          "warnings.osd_fail_count": 1,
+          "warnings.wmf_missing_loader": 1,
+          "warnings.format_conflict": 1,
+          "text_layer_detected": 1,
+          "processed_at": 1
+        }
+      },
+      {
+        "$sort": {"processed_at": -1}
+      },
+      {
+        "$limit": 50
+      }
+    ]
+  },
+  {
+    "name": "throughput_stats",
+    "description": "p50/p90 process_seconds by format",
+    "pipeline": [
+      {
+        "$match": {
+          "metrics.process_seconds": {"$ne": null, "$exists": true}
+        }
+      },
+      {
+        "$group": {
+          "_id": "$input.format",
+          "count": {"$sum": 1},
+          "p50": {"$percentile": {"input": "$metrics.process_seconds", "p": [0.5], "method": "approximate"}},
+          "p90": {"$percentile": {"input": "$metrics.process_seconds", "p": [0.9], "method": "approximate"}},
+          "avg": {"$avg": "$metrics.process_seconds"},
+          "min": {"$min": "$metrics.process_seconds"},
+          "max": {"$max": "$metrics.process_seconds"}
+        }
+      },
+      {
+        "$project": {
+          "format": "$_id",
+          "count": 1,
+          "p50": {"$arrayElemAt": ["$p50", 0]},
+          "p90": {"$arrayElemAt": ["$p90", 0]},
+          "avg": 1,
+          "min": 1,
+          "max": 1,
+          "_id": 0
+        }
+      },
+      {
+        "$sort": {"count": -1}
+      }
+    ]
+  },
+  {
+    "name": "markdown_density",
+    "description": "md/page percentiles by format",
+    "pipeline": [
+      {
+        "$match": {
+          "metrics.page_count": {"$ne": null, "$gt": 0},
+          "metrics.markdown_length": {"$ne": null, "$exists": true}
+        }
+      },
+      {
+        "$addFields": {
+          "md_per_page": {
+            "$cond": [
+              {"$eq": ["$metrics.page_count", 0]},
+              0,
+              {"$divide": ["$metrics.markdown_length", "$metrics.page_count"]}
+            ]
+          }
+        }
+      },
+      {
+        "$group": {
+          "_id": "$input.format",
+          "count": {"$sum": 1},
+          "p50": {"$percentile": {"input": "$md_per_page", "p": [0.5], "method": "approximate"}},
+          "p90": {"$percentile": {"input": "$md_per_page", "p": [0.9], "method": "approximate"}},
+          "p95": {"$percentile": {"input": "$md_per_page", "p": [0.95], "method": "approximate"}},
+          "avg": {"$avg": "$md_per_page"},
+          "min": {"$min": "$md_per_page"},
+          "max": {"$max": "$md_per_page"}
+        }
+      },
+      {
+        "$project": {
+          "format": "$_id",
+          "count": 1,
+          "p50": {"$arrayElemAt": ["$p50", 0]},
+          "p90": {"$arrayElemAt": ["$p90", 0]},
+          "p95": {"$arrayElemAt": ["$p95", 0]},
+          "avg": 1,
+          "min": 1,
+          "max": 1,
+          "_id": 0
+        }
+      },
+      {
+        "$sort": {"count": -1}
+      }
+    ]
+  }
+]
+
