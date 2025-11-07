@@ -1555,7 +1555,7 @@ if uploaded_file is not None:
                             from pypdf import PdfReader
                             pdf_reader = PdfReader(tmp_file_path)
                             total_pages = len(pdf_reader.pages)
-                            print(f"Document has {total_pages} pages")
+                            logging.info(f"Document has {total_pages} pages (detected via pypdf)")
 
                             # Guardrail: Check MAX_PAGES limit
                             if total_pages > MAX_PAGES:
@@ -1568,19 +1568,19 @@ if uploaded_file is not None:
                             elif total_pages > 120:
                                 MAX_PAGES_PER_CHUNK = 120
                                 st.warning(f"⚠️ Large document detected ({total_pages} pages). Processing in chunks of {MAX_PAGES_PER_CHUNK} pages for stability.")
-                                print(f"Large document: processing first {MAX_PAGES_PER_CHUNK} pages of {total_pages}")
+                                logging.info(f"Large document: processing first {MAX_PAGES_PER_CHUNK} pages of {total_pages}")
 
                                 # Track conversion phases
-                                print(f"Phase 1: Starting converter.convert() with page_range=(1, {MAX_PAGES_PER_CHUNK})...")
+                                logging.info(f"Phase 1: Starting converter.convert() with page_range=(1, {MAX_PAGES_PER_CHUNK})...")
                                 result = converter.convert(tmp_file_path, page_range=(1, MAX_PAGES_PER_CHUNK))
-                                print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+                                logging.info(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
 
                                 st.info(f"✓ Processed first {MAX_PAGES_PER_CHUNK} pages. Additional chunks can be processed separately.")
                             else:
                                 # Normal processing for documents <= 120 pages
-                                print("Phase 1: Starting converter.convert()...")
+                                logging.info("Phase 1: Starting converter.convert()...")
                                 result = converter.convert(tmp_file_path)
-                                print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+                                logging.info(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
                             
                             # Guardrail: Check MAX_SECONDS limit
                             elapsed = time.time() - start_time
@@ -1594,11 +1594,11 @@ if uploaded_file is not None:
 
                         except Exception as e:
                             # Fallback to normal processing if page detection fails
-                            print(f"Could not detect page count: {e}. Using normal processing.")
-                            print("Phase 1: Starting converter.convert()...")
+                            logging.warning(f"Could not detect page count: {e}. Using normal processing.")
+                            logging.info("Phase 1: Starting converter.convert()...")
                             # Already wrapped in suppress_pdf_noise_for_non_pdf above
                             result = converter.convert(tmp_file_path)
-                            print(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
+                            logging.info(f"Phase 1 complete: converter.convert() returned in {time.time() - start_time:.2f}s")
                             
                             # Guardrail: Check MAX_SECONDS limit after fallback
                             elapsed = time.time() - start_time
