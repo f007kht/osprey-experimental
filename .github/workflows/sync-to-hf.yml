@@ -65,12 +65,27 @@ jobs:
             fi
           done
           
-          # Add .streamlit/ if it exists
+          # Add .streamlit/ if it exists, otherwise create minimal config
           if [ -d .streamlit ] && [ "$(ls -A .streamlit 2>/dev/null)" ]; then
             echo "  Adding .streamlit/ directory..."
             git add .streamlit/ && echo "  Added: .streamlit/" || echo "  Failed: .streamlit/"
           else
-            echo "  Skipped (missing or empty): .streamlit/"
+            echo "  Creating minimal .streamlit/config.toml..."
+            mkdir -p .streamlit
+            cat > .streamlit/config.toml << 'EOF'
+[server]
+headless = true
+port = 8501
+enableXsrfProtection = false
+maxUploadSize = 200
+enableCORS = false
+fileWatcherType = "poll"
+
+[browser]
+gatherUsageStats = false
+serverAddress = "localhost"
+EOF
+            git add .streamlit/ && echo "  Added: .streamlit/ (created)" || echo "  Failed: .streamlit/"
           fi
           
           echo ""

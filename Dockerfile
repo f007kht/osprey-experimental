@@ -43,7 +43,7 @@ RUN TESSDATA_PREFIX_VALUE=$(cat /tmp/tessdata_prefix) && \
 ENV OPENCV_IO_ENABLE_OPENEXR=0
 ENV OMP_NUM_THREADS=4
 
-# Copy Streamlit config
+# Copy Streamlit config (will be created by sync workflow if missing)
 COPY .streamlit .streamlit
 
 # Copy entrypoint script
