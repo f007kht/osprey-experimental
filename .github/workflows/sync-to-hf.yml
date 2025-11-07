@@ -72,19 +72,19 @@ jobs:
           else
             echo "  Creating minimal .streamlit/config.toml..."
             mkdir -p .streamlit
-            cat > .streamlit/config.toml << 'EOF'
-[server]
-headless = true
-port = 8501
-enableXsrfProtection = false
-maxUploadSize = 200
-enableCORS = false
-fileWatcherType = "poll"
-
-[browser]
-gatherUsageStats = false
-serverAddress = "localhost"
-EOF
+            {
+              echo '[server]'
+              echo 'headless = true'
+              echo 'port = 8501'
+              echo 'enableXsrfProtection = false'
+              echo 'maxUploadSize = 200'
+              echo 'enableCORS = false'
+              echo 'fileWatcherType = "poll"'
+              echo ''
+              echo '[browser]'
+              echo 'gatherUsageStats = false'
+              echo 'serverAddress = "localhost"'
+            } > .streamlit/config.toml
             git add .streamlit/ && echo "  Added: .streamlit/ (created)" || echo "  Failed: .streamlit/"
           fi
           
