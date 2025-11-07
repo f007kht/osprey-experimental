@@ -29,43 +29,70 @@ jobs:
           git checkout --orphan hf-deploy-temp
           git rm -rf --cached . 2>/dev/null || true
           
-          echo "Adding core deployment files..."
-          # Add core deployment files (ignore missing files)
-          git add app.py app_settings.py helpers_mongo.py entrypoint.sh Dockerfile requirements.txt README.md .gitattributes .cursorrules .github/workflows/sync-to-hf.yml 2>/dev/null || true
+          echo "=== Checking file existence ==="
+          [ -f app.py ] && echo "✓ app.py" || echo "✗ app.py missing"
+          [ -f app_settings.py ] && echo "✓ app_settings.py" || echo "✗ app_settings.py missing"
+          [ -f helpers_mongo.py ] && echo "✓ helpers_mongo.py" || echo "✗ helpers_mongo.py missing"
+          [ -f entrypoint.sh ] && echo "✓ entrypoint.sh" || echo "✗ entrypoint.sh missing"
+          [ -f Dockerfile ] && echo "✓ Dockerfile" || echo "✗ Dockerfile missing"
+          [ -f requirements.txt ] && echo "✓ requirements.txt" || echo "✗ requirements.txt missing"
+          [ -f README.md ] && echo "✓ README.md" || echo "✗ README.md missing"
+          [ -d app/ ] && echo "✓ app/" || echo "✗ app/ missing"
+          [ -d pages/ ] && echo "✓ pages/" || echo "✗ pages/ missing"
+          [ -d utils/ ] && echo "✓ utils/" || echo "✗ utils/ missing"
+          [ -d scripts/ ] && echo "✓ scripts/" || echo "✗ scripts/ missing"
+          [ -d .streamlit ] && echo "✓ .streamlit/" || echo "✗ .streamlit/ missing"
           
-          echo "Adding modular structure directories..."
-          # Add new modular structure (required by Dockerfile)
-          git add app/ pages/ utils/ scripts/ 2>/dev/null || true
+          echo ""
+          echo "=== Adding core deployment files ==="
+          # Add core deployment files one by one with error checking
+          for file in app.py app_settings.py helpers_mongo.py entrypoint.sh Dockerfile requirements.txt README.md .gitattributes .cursorrules .github/workflows/sync-to-hf.yml; do
+            if [ -f "$file" ]; then
+              git add "$file" && echo "  Added: $file" || echo "  Failed: $file"
+            else
+              echo "  Skipped (missing): $file"
+            fi
+          done
+          
+          echo ""
+          echo "=== Adding modular structure directories ==="
+          # Add directories if they exist and have content
+          for dir in app pages utils scripts; do
+            if [ -d "$dir" ] && [ "$(ls -A $dir 2>/dev/null)" ]; then
+              git add "$dir/" && echo "  Added: $dir/" || echo "  Failed: $dir/"
+            else
+              echo "  Skipped (missing or empty): $dir/"
+            fi
+          done
           
           # Add .streamlit/ if it exists
-          if [ -d .streamlit ]; then
-            echo "Adding .streamlit/ directory..."
-            git add .streamlit/
+          if [ -d .streamlit ] && [ "$(ls -A .streamlit 2>/dev/null)" ]; then
+            echo "  Adding .streamlit/ directory..."
+            git add .streamlit/ && echo "  Added: .streamlit/" || echo "  Failed: .streamlit/"
+          else
+            echo "  Skipped (missing or empty): .streamlit/"
           fi
           
-          echo "Verifying staged files..."
+          echo ""
+          echo "=== Verifying staged files ==="
           STAGED_FILES=$(git ls-files --cached)
-          if [ -z "$STAGED_FILES" ]; then
-            echo "Error: No files were staged for commit"
+          STAGED_COUNT=$(echo "$STAGED_FILES" | wc -l)
+          
+          if [ -z "$STAGED_FILES" ] || [ "$STAGED_COUNT" -eq 0 ]; then
+            echo "ERROR: No files were staged for commit"
             echo "Current directory contents:"
             ls -la
-            echo "Checking for key files:"
-            [ -f app.py ] && echo "✓ app.py exists" || echo "✗ app.py missing"
-            [ -f app_settings.py ] && echo "✓ app_settings.py exists" || echo "✗ app_settings.py missing"
-            [ -d app/ ] && echo "✓ app/ directory exists" || echo "✗ app/ directory missing"
-            [ -d pages/ ] && echo "✓ pages/ directory exists" || echo "✗ pages/ directory missing"
-            [ -d utils/ ] && echo "✓ utils/ directory exists" || echo "✗ utils/ directory missing"
-            [ -d scripts/ ] && echo "✓ scripts/ directory exists" || echo "✗ scripts/ directory missing"
-            [ -d .streamlit ] && echo "✓ .streamlit/ directory exists" || echo "✗ .streamlit/ directory missing"
             exit 1
           fi
           
-          echo "Staged files:"
+          echo "Successfully staged $STAGED_COUNT files"
+          echo "Sample of staged files:"
           echo "$STAGED_FILES" | head -20
           
-          # Commit deployment files (allow empty commit if nothing changed but files are staged)
-          git commit -m "chore: Sync deployment files to HF Space (excludes test data to stay within storage limits)" || \
-          git commit --allow-empty -m "chore: Sync deployment files to HF Space (no changes detected)"
+          echo ""
+          echo "=== Committing..."
+          git commit -m "chore: Sync deployment files to HF Space (excludes test data to stay within storage limits)"
+          echo "✓ Commit successful"
 
       - name: Add Hugging Face remote
         run: |
