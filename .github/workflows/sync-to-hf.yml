@@ -65,13 +65,11 @@ jobs:
             fi
           done
           
-          # Add .streamlit/ if it exists, otherwise create minimal config
-          if [ -d .streamlit ] && [ "$(ls -A .streamlit 2>/dev/null)" ]; then
-            echo "  Adding .streamlit/ directory..."
-            git add .streamlit/ && echo "  Added: .streamlit/" || echo "  Failed: .streamlit/"
-          else
+          # Always ensure .streamlit/ exists and is committed (force-add even if in .gitignore)
+          echo "  Ensuring .streamlit/ directory exists..."
+          mkdir -p .streamlit
+          if [ ! -f .streamlit/config.toml ]; then
             echo "  Creating minimal .streamlit/config.toml..."
-            mkdir -p .streamlit
             {
               echo '[server]'
               echo 'headless = true'
@@ -85,8 +83,9 @@ jobs:
               echo 'gatherUsageStats = false'
               echo 'serverAddress = "localhost"'
             } > .streamlit/config.toml
-            git add .streamlit/ && echo "  Added: .streamlit/ (created)" || echo "  Failed: .streamlit/"
           fi
+          # Force-add .streamlit/ even if it's in .gitignore
+          git add -f .streamlit/ && echo "  Added: .streamlit/" || echo "  Failed: .streamlit/"
           
           echo ""
           echo "=== Verifying staged files ==="
