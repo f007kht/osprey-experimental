@@ -1034,7 +1034,7 @@ def _store_in_mongodb(
             })
         
         # Import MongoDB size helpers
-        from helpers_mongo import split_for_mongo, bson_len, MAX_BSON_SAFE
+        from utils.mongodb_helpers import split_for_mongo, bson_len, MAX_BSON_SAFE
         
         # Prepare primary document for storage
         primary_doc = {

@@ -16,5 +16,10 @@ export TESSDATA_PREFIX="${TESSDATA_PREFIX:-/usr/share/tesseract-ocr/4.00/tessdat
 
 # Run Streamlit with platform port support ($PORT for Spaces, Render, Fly, Heroku, etc.)
 # Default to 8501 if PORT is not set
-exec streamlit run app.py --server.address=0.0.0.0 --server.port="${PORT:-8501}"
+# Support both app.py (backward compatibility) and app/main.py (new modular entrypoint)
+STREAMLIT_APP="${STREAMLIT_APP:-app.py}"
+if [ ! -f "$STREAMLIT_APP" ] && [ -f "app/main.py" ]; then
+    STREAMLIT_APP="app/main.py"
+fi
+exec streamlit run "$STREAMLIT_APP" --server.address=0.0.0.0 --server.port="${PORT:-8501}"
 

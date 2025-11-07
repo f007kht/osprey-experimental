@@ -53,7 +53,10 @@ RUN chmod +x /entrypoint.sh
 # Copy app files
 COPY app.py .
 COPY app_settings.py .
-COPY helpers_mongo.py .
+COPY app/ app/
+COPY utils/ utils/
+COPY pages/ pages/
+COPY scripts/ scripts/
 
 # Expose Streamlit port (use $PORT at runtime, default 8501)
 EXPOSE 8501

@@ -1,0 +1,49 @@
+# -*- coding: utf-8 -*-
+# Temporary wrapper for backward compatibility
+# This file will be removed once migration is complete
+# Use: streamlit run app/main.py
+
+import os
+import json
+import streamlit as st
+
+# CRITICAL: Health check must be early (before heavy imports)
+# This keeps health endpoint fast and cheap
+try:
+    # Try new query_params API first (Streamlit >= 1.28)
+    params = st.query_params if hasattr(st, "query_params") else {}
+    health_param = params.get("health", ["0"]) if isinstance(params, dict) else params.get("health", "0")
+except Exception:
+    # Fallback for older Streamlit versions
+    try:
+        params = st.experimental_get_query_params()
+        health_param = params.get("health", ["0"])[0] if isinstance(params, dict) else "0"
+    except Exception:
+        health_param = "0"
+
+if health_param in ("1", "true", "True"):
+    # Minimal health check - return immediately without loading heavy dependencies
+    from app_settings import get_settings
+    
+    settings = get_settings()
+    payload = {
+        "status": "ok",
+        "mongo": {
+            "enabled": settings.enable_mongodb,
+            "status": getattr(settings, "mongo_status", "disabled")
+        },
+        "ocr": {
+            "tessdata_prefix": os.environ.get("TESSDATA_PREFIX", "not_set")
+        },
+        "port": os.environ.get("PORT", "8501"),
+        "version": os.environ.get("APP_VERSION", "dev"),
+    }
+    st.write(json.dumps(payload))
+    st.stop()
+
+# Delegate to the new modular main
+from app.main import run
+
+if __name__ == "__main__":
+    run()
+

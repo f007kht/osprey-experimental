@@ -29,12 +29,13 @@ try:
     from app_settings import get_settings
     app_config = get_settings()
     DEFAULT_CONNECTION_STRING = app_config.mongodb_connection_string
-    # Check both docling_db and docling_documents (documents may be in either)
-    DEFAULT_DB = os.getenv("MONGODB_DATABASE", "docling_db")  # Default to docling_db
+    # Use app_config defaults for consistency with app_settings.py
+    DEFAULT_DB = app_config.mongodb_database  # Defaults to "docling_documents" in app_settings
     DEFAULT_COLL = app_config.mongodb_collection
-except ImportError:
+except Exception:
+    # Catch all exceptions (ImportError, AttributeError, TypeError, etc.) and fall back to defaults
     DEFAULT_CONNECTION_STRING = None
-    DEFAULT_DB = os.getenv("MONGODB_DATABASE", "docling_db")  # Default to docling_db
+    DEFAULT_DB = os.getenv("MONGODB_DATABASE", "docling_documents")  # Match app_settings default
     DEFAULT_COLL = os.getenv("MONGODB_COLLECTION", "documents")
 
 DEFAULT_EXPORT_DIR = os.getenv("MONGODB_EXPORT_DIR", r"D:\.osprey\mongodb_exports")

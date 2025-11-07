@@ -8,7 +8,7 @@ sdk_version: 1.51.0
 app_port: 8501
 ---
 
-# Osprey Docling Document Processor
+# Module 1 - Osprey Backend
 
 A Streamlit web application for processing documents using the Docling library. Upload documents (PDF, DOCX, PPTX, XLSX, images, audio) and extract their content as Markdown.
 
@@ -31,6 +31,8 @@ A Streamlit web application for processing documents using the Docling library. 
 2. **Run the Streamlit app:**
    ```bash
    streamlit run app.py
+   # or (new modular entrypoint)
+   streamlit run app/main.py
    ```
 
 3. **Open your browser:**

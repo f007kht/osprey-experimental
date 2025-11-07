@@ -441,8 +441,14 @@ pip-selfcheck.json
 # docs/**/*.svg
 
 # Local utility scripts (not part of core functionality)
+# These have been moved to scripts/utils/ - keeping here for backward compatibility
 check_memory.py
 export_doc.py
 extract_chunks.py
 find_comet.py
 doc_*.json
+
+# Export directory and backup files
+exports/
+.backup/
+.streamlit/
