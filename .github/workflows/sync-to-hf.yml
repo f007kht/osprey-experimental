@@ -29,22 +29,37 @@ jobs:
           git checkout --orphan hf-deploy-temp
           git rm -rf --cached . 2>/dev/null || true
           
+          echo "Adding core deployment files..."
           # Add core deployment files (ignore missing files)
           git add app.py app_settings.py helpers_mongo.py entrypoint.sh Dockerfile requirements.txt README.md .gitattributes .cursorrules .github/workflows/sync-to-hf.yml 2>/dev/null || true
           
+          echo "Adding modular structure directories..."
           # Add new modular structure
-          git add app/ pages/ 2>/dev/null || true
+          git add app/ pages/ utils/ 2>/dev/null || true
           
           # Add .streamlit/ if it exists
           if [ -d .streamlit ]; then
+            echo "Adding .streamlit/ directory..."
             git add .streamlit/
           fi
           
-          # Verify files were added
-          if [ -z "$(git ls-files --cached)" ]; then
-            echo "Error: No files to commit"
+          echo "Verifying staged files..."
+          STAGED_FILES=$(git ls-files --cached)
+          if [ -z "$STAGED_FILES" ]; then
+            echo "Error: No files were staged for commit"
+            echo "Current directory contents:"
+            ls -la
+            echo "Checking for key files:"
+            [ -f app.py ] && echo "✓ app.py exists" || echo "✗ app.py missing"
+            [ -f app_settings.py ] && echo "✓ app_settings.py exists" || echo "✗ app_settings.py missing"
+            [ -d app/ ] && echo "✓ app/ directory exists" || echo "✗ app/ directory missing"
+            [ -d pages/ ] && echo "✓ pages/ directory exists" || echo "✗ pages/ directory missing"
+            [ -d utils/ ] && echo "✓ utils/ directory exists" || echo "✗ utils/ directory missing"
             exit 1
           fi
+          
+          echo "Staged files:"
+          echo "$STAGED_FILES" | head -20
           
           # Commit deployment files (allow empty commit if nothing changed but files are staged)
           git commit -m "chore: Sync deployment files to HF Space (excludes test data to stay within storage limits)" || \
